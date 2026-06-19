@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -17,10 +18,16 @@ const PLATFORMS: { value: Platform; label: string }[] = [
 ]
 
 export function NewPostDialog() {
+  const router = useRouter()
+  const fileRef = useRef<HTMLInputElement>(null)
+
   const [open, setOpen] = useState(false)
   const [caption, setCaption] = useState('')
   const [hashtags, setHashtags] = useState('')
   const [mediaUrl, setMediaUrl] = useState('')
+  const [mediaPreview, setMediaPreview] = useState('')
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState('')
   const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>([])
   const [scheduledAt, setScheduledAt] = useState('')
   const [loading, setLoading] = useState(false)
@@ -29,6 +36,45 @@ export function NewPostDialog() {
     setSelectedPlatforms((prev) =>
       prev.includes(platform) ? prev.filter((p) => p !== platform) : [...prev, platform]
     )
+  }
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadError('')
+    setUploading(true)
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      const res = await fetch('/api/upload', { method: 'POST', body: form })
+      const data = await res.json() as { url?: string; error?: string }
+      if (!res.ok || !data.url) {
+        setUploadError(data.error ?? 'Upload failed')
+        return
+      }
+      setMediaUrl(data.url)
+      setMediaPreview(URL.createObjectURL(file))
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  function clearMedia() {
+    setMediaUrl('')
+    setMediaPreview('')
+    setUploadError('')
+    if (fileRef.current) fileRef.current.value = ''
+  }
+
+  function handleClose(isOpen: boolean) {
+    setOpen(isOpen)
+    if (!isOpen) {
+      setCaption('')
+      setHashtags('')
+      clearMedia()
+      setSelectedPlatforms([])
+      setScheduledAt('')
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -47,19 +93,15 @@ export function NewPostDialog() {
           scheduled_at: scheduledAt || null,
         }),
       })
-      setOpen(false)
-      setCaption('')
-      setHashtags('')
-      setMediaUrl('')
-      setSelectedPlatforms([])
-      setScheduledAt('')
+      handleClose(false)
+      router.refresh()
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogTrigger asChild>
         <Button>New Post</Button>
       </DialogTrigger>
@@ -106,16 +148,45 @@ export function NewPostDialog() {
               ))}
             </div>
           </div>
+
+          {/* Media upload */}
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="media_url">Media URL (optional)</Label>
-            <Input
-              id="media_url"
-              type="url"
-              value={mediaUrl}
-              onChange={(e) => setMediaUrl(e.target.value)}
-              placeholder="https://… (required for Instagram)"
+            <Label>Media (required for Instagram &amp; Threads)</Label>
+            {mediaPreview ? (
+              <div className="relative">
+                <img
+                  src={mediaPreview}
+                  alt="Preview"
+                  className="h-40 w-full rounded-md border object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={clearMedia}
+                  className="absolute right-2 top-2 rounded bg-black/60 px-2 py-0.5 text-xs text-white hover:bg-black/80"
+                >
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <div
+                className="flex h-24 cursor-pointer items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground hover:bg-accent transition-colors"
+                onClick={() => fileRef.current?.click()}
+              >
+                {uploading ? 'Uploading…' : 'Click to upload image or video'}
+              </div>
+            )}
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif,video/mp4"
+              className="hidden"
+              onChange={handleFileChange}
             />
+            {uploadError && (
+              <p className="text-xs text-destructive">{uploadError}</p>
+            )}
           </div>
+
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="scheduled_at">Schedule For (optional)</Label>
             <Input
@@ -126,10 +197,10 @@ export function NewPostDialog() {
             />
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            <Button type="button" variant="outline" onClick={() => handleClose(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading || !caption.trim()}>
+            <Button type="submit" disabled={loading || uploading || !caption.trim()}>
               {loading ? 'Creating...' : scheduledAt ? 'Schedule Post' : 'Save Draft'}
             </Button>
           </DialogFooter>
