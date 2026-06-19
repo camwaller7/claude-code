@@ -1,6 +1,8 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { MessageThread } from '@/components/inbox/MessageThread'
 import { ReplyBox } from '@/components/inbox/ReplyBox'
+import { ConversationActions } from '@/components/inbox/ConversationActions'
+import { Badge } from '@/components/ui/badge'
 import type { Conversation, Message } from '@/types'
 import { notFound } from 'next/navigation'
 
@@ -29,13 +31,24 @@ export default async function ConversationPage({ params }: Props) {
   const msgList = (messages ?? []) as Message[]
   const lastInbound = [...msgList].reverse().find((m) => m.direction === 'inbound')
 
+  const conv = conversation as Conversation
+
   return (
     <div className="flex flex-col gap-4 max-w-3xl mx-auto">
-      <div>
-        <h1 className="text-xl font-bold">{conversation.contact_name}</h1>
-        <p className="text-sm text-muted-foreground">{conversation.contact_handle} · {conversation.platform}</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold">{conv.contact_name}</h1>
+          <p className="text-sm text-muted-foreground">
+            {conv.contact_handle} · {conv.platform}
+          </p>
+          <div className="mt-1 flex gap-2">
+            <Badge variant="outline">{conv.category.replace('_', ' ')}</Badge>
+            {conv.priority > 5 && <Badge variant="destructive">High priority</Badge>}
+          </div>
+        </div>
+        <ConversationActions conversation={conv} />
       </div>
-      <MessageThread messages={msgList} conversation={conversation as Conversation} />
+      <MessageThread messages={msgList} conversation={conv} />
       <ReplyBox conversationId={id} suggestedReply={lastInbound?.ai_draft_reply ?? undefined} />
     </div>
   )
