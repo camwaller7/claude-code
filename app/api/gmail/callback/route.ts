@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
       code,
       client_id: process.env.GMAIL_CLIENT_ID!,
       client_secret: process.env.GMAIL_CLIENT_SECRET!,
-      redirect_uri: process.env.GMAIL_REDIRECT_URI!,
+      redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/gmail/callback`,
     }),
   })
   const tokenData = await tokenRes.json() as {

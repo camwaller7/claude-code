@@ -15,7 +15,7 @@ export async function GET(_request: NextRequest) {
 
   const params = new URLSearchParams({
     client_id: process.env.GMAIL_CLIENT_ID!,
-    redirect_uri: process.env.GMAIL_REDIRECT_URI!,
+    redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/gmail/callback`,
     scope: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send',
     response_type: 'code',
     access_type: 'offline',
