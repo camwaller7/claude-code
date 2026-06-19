@@ -1,0 +1,26 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { randomBytes } from 'crypto'
+import { cookies } from 'next/headers'
+
+export async function GET(_request: NextRequest) {
+  const state = randomBytes(16).toString('hex')
+
+  const cookieStore = await cookies()
+  cookieStore.set('meta_oauth_state', state, {
+    httpOnly: true,
+    sameSite: 'lax',
+    maxAge: 600,
+    path: '/',
+  })
+
+  const params = new URLSearchParams({
+    client_id: process.env.META_APP_ID!,
+    redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/meta/callback`,
+    scope: 'instagram_basic,instagram_manage_messages,pages_messaging,pages_read_engagement,pages_manage_posts,threads_basic,threads_content_publish',
+    response_type: 'code',
+    state,
+  })
+
+  const url = `https://www.facebook.com/v21.0/dialog/oauth?${params.toString()}`
+  return NextResponse.redirect(url)
+}

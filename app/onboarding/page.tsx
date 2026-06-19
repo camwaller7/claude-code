@@ -2,39 +2,110 @@ import { Shell } from '@/components/layout/shell'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { adminSupabase } from '@/lib/supabase/admin'
+import { Platform, PlatformConnection } from '@/types'
+import Link from 'next/link'
 
-const platforms = [
-  { name: 'Instagram / Facebook (Meta)', key: 'meta', description: 'Connect your Meta account for Instagram, Facebook, and Threads.' },
-  { name: 'X (Twitter)', key: 'x', description: 'Connect your X account to sync DMs and mentions.' },
-  { name: 'Gmail', key: 'gmail', description: 'Connect Gmail to manage email brand inquiries.' },
-  { name: 'TikTok', key: 'tiktok', description: 'Connect TikTok via scheduling provider.' },
+interface PlatformConfig {
+  label: string
+  platform: Platform
+  connectHref: string | null
+  description: string
+  manualNote?: string
+}
+
+const PLATFORM_CONFIGS: PlatformConfig[] = [
+  {
+    label: 'Instagram',
+    platform: 'instagram',
+    connectHref: '/api/meta/connect',
+    description: 'Connect your Instagram Business account via Meta.',
+  },
+  {
+    label: 'Facebook',
+    platform: 'facebook',
+    connectHref: '/api/meta/connect',
+    description: 'Connect your Facebook Pages via Meta OAuth.',
+  },
+  {
+    label: 'X (Twitter)',
+    platform: 'x',
+    connectHref: '/api/x/connect',
+    description: 'Connect your X account to sync DMs and tweets.',
+  },
+  {
+    label: 'Gmail',
+    platform: 'gmail',
+    connectHref: '/api/gmail/connect',
+    description: 'Connect Gmail to manage email brand inquiries.',
+  },
+  {
+    label: 'Threads',
+    platform: 'threads',
+    connectHref: '/api/threads/connect',
+    description: 'Connect Threads to publish content.',
+  },
+  {
+    label: 'TikTok',
+    platform: 'tiktok',
+    connectHref: null,
+    description: 'TikTok integration is handled via a third-party scheduling provider.',
+    manualNote: 'Manual setup required — configure your TikTok scheduling provider credentials separately.',
+  },
 ]
 
-export default function OnboardingPage() {
+export default async function OnboardingPage() {
+  const { data: connections } = await adminSupabase
+    .from('platform_connections')
+    .select('*')
+
+  const connectionsByPlatform = new Map<Platform, PlatformConnection>()
+  for (const conn of (connections ?? []) as PlatformConnection[]) {
+    connectionsByPlatform.set(conn.platform, conn)
+  }
+
   return (
     <Shell>
       <div className="max-w-2xl">
         <div className="mb-6">
           <h1 className="text-2xl font-bold">Platform Connections</h1>
-          <p className="text-sm text-muted-foreground">Connect your social platforms to start syncing messages.</p>
+          <p className="text-sm text-muted-foreground">Connect your social platforms to start syncing messages and scheduling posts.</p>
         </div>
         <div className="flex flex-col gap-4">
-          {platforms.map((p) => (
-            <Card key={p.key}>
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">{p.name}</CardTitle>
-                  <Badge variant="outline">Disconnected</Badge>
-                </div>
-                <CardDescription>{p.description}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button variant="outline" size="sm" disabled>
-                  Connect (coming soon)
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+          {PLATFORM_CONFIGS.map((config) => {
+            const connection = connectionsByPlatform.get(config.platform)
+            const isConnected = Boolean(connection)
+
+            return (
+              <Card key={config.platform}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">{config.label}</CardTitle>
+                    <Badge variant={isConnected ? 'default' : 'outline'}>
+                      {isConnected ? 'Connected' : 'Disconnected'}
+                    </Badge>
+                  </div>
+                  <CardDescription>{config.description}</CardDescription>
+                  {isConnected && connection && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Account: <span className="font-medium">{connection.account_id}</span>
+                    </p>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  {config.manualNote ? (
+                    <p className="text-sm text-muted-foreground">{config.manualNote}</p>
+                  ) : config.connectHref ? (
+                    <Button asChild variant="outline" size="sm">
+                      <Link href={config.connectHref}>
+                        {isConnected ? 'Reconnect' : 'Connect'}
+                      </Link>
+                    </Button>
+                  ) : null}
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
       </div>
     </Shell>
