@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteClient } from '@/lib/supabase/server'
+import { createRouteHandlerSupabase } from '@/lib/supabase/server'
 import { inngest } from '@/lib/inngest/client'
 
 export async function GET() {
-  const supabase = await createRouteClient()
+  const supabase = createRouteHandlerSupabase()
   const { data, error } = await supabase
     .from('posts')
     .select('*')
@@ -14,15 +14,15 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = await createRouteClient()
+  const supabase = createRouteHandlerSupabase()
   const body = await request.json()
-  const { caption, hashtags, media_url, platforms, scheduled_at } = body
+  const { caption, hashtags, platforms, media_url, scheduled_at } = body
 
   const status = scheduled_at ? 'scheduled' : 'draft'
 
   const { data, error } = await supabase
     .from('posts')
-    .insert({ caption, hashtags, media_url, platforms, scheduled_at, status })
+    .insert({ caption, hashtags: hashtags ?? '', platforms: platforms ?? [], media_url: media_url ?? null, scheduled_at: scheduled_at ?? null, status })
     .select()
     .single()
 
@@ -31,8 +31,7 @@ export async function POST(request: NextRequest) {
   if (scheduled_at && data) {
     await inngest.send({
       name: 'post/publish.scheduled',
-      data: { postId: data.id },
-      ts: new Date(scheduled_at).getTime(),
+      data: { postId: data.id, scheduledAt: scheduled_at },
     })
   }
 

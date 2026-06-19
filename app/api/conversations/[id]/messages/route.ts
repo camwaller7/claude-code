@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteClient } from '@/lib/supabase/server'
+import { createRouteHandlerSupabase } from '@/lib/supabase/server'
 import { triageMessage } from '@/lib/anthropic/triage'
 
 export async function GET(
@@ -7,7 +7,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  const supabase = await createRouteClient()
+  const supabase = createRouteHandlerSupabase()
   const { data, error } = await supabase
     .from('messages')
     .select('*')
@@ -23,7 +23,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  const supabase = await createRouteClient()
+  const supabase = createRouteHandlerSupabase()
   const body = await request.json()
   const { direction, body: messageBody } = body
 
@@ -44,12 +44,7 @@ export async function POST(
 
       await supabase
         .from('conversations')
-        .update({
-          category: triage.category,
-          priority: triage.priority,
-          last_message_at: new Date().toISOString(),
-          status: 'needs_reply',
-        })
+        .update({ category: triage.category, priority: triage.priority, last_message_at: new Date().toISOString() })
         .eq('id', id)
     }
   }
@@ -62,6 +57,7 @@ export async function POST(
       body: messageBody,
       ai_category,
       ai_draft_reply,
+      sent_at: new Date().toISOString(),
     })
     .select()
     .single()

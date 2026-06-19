@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteClient } from '@/lib/supabase/server'
+import { createRouteHandlerSupabase } from '@/lib/supabase/server'
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  const supabase = await createRouteClient()
+  const supabase = createRouteHandlerSupabase()
   const body = await request.json()
   const { status, deal_value, notes, agreed_date, payment_due_date, contact_name } = body
 
@@ -34,7 +34,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  const supabase = await createRouteClient()
+  const supabase = createRouteHandlerSupabase()
   const { error } = await supabase.from('deals').delete().eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return new NextResponse(null, { status: 204 })

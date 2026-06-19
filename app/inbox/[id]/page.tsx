@@ -1,37 +1,42 @@
 import { createServerClient } from '@/lib/supabase/server'
-import { notFound } from 'next/navigation'
 import { MessageThread } from '@/components/inbox/MessageThread'
 import { ReplyBox } from '@/components/inbox/ReplyBox'
 import type { Conversation, Message } from '@/types'
+import { notFound } from 'next/navigation'
 
-export default async function ConversationPage({ params }: { params: Promise<{ id: string }> }) {
+interface Props {
+  params: Promise<{ id: string }>
+}
+
+export default async function ConversationPage({ params }: Props) {
   const { id } = await params
-  const supabase = await createServerClient()
+  const supabase = createServerClient()
 
-  const [{ data: conv }, { data: messages }] = await Promise.all([
-    supabase.from('conversations').select('*').eq('id', id).single(),
-    supabase.from('messages').select('*').eq('conversation_id', id).order('sent_at', { ascending: true }),
-  ])
+  const { data: conversation } = await supabase
+    .from('conversations')
+    .select('*')
+    .eq('id', id)
+    .single()
 
-  if (!conv) notFound()
+  if (!conversation) notFound()
 
-  const lastInbound = [...(messages ?? [])].reverse().find((m: Message) => m.direction === 'inbound')
+  const { data: messages } = await supabase
+    .from('messages')
+    .select('*')
+    .eq('conversation_id', id)
+    .order('sent_at', { ascending: true })
+
+  const msgList = (messages ?? []) as Message[]
+  const lastInbound = [...msgList].reverse().find((m) => m.direction === 'inbound')
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="border-b border-zinc-200 px-6 py-4">
-        <h2 className="text-base font-semibold">{conv.contact_name || conv.contact_handle}</h2>
-        <p className="text-xs text-zinc-400">{conv.platform} · {conv.contact_handle}</p>
+    <div className="flex flex-col gap-4 max-w-3xl mx-auto">
+      <div>
+        <h1 className="text-xl font-bold">{conversation.contact_name}</h1>
+        <p className="text-sm text-muted-foreground">{conversation.contact_handle} · {conversation.platform}</p>
       </div>
-      <div className="flex-1 overflow-y-auto px-6 py-4">
-        <MessageThread messages={(messages as Message[]) ?? []} conversation={conv as Conversation} />
-      </div>
-      <div className="border-t border-zinc-200 px-6 py-4">
-        <ReplyBox
-          conversationId={id}
-          suggestedReply={lastInbound?.ai_draft_reply ?? undefined}
-        />
-      </div>
+      <MessageThread messages={msgList} conversation={conversation as Conversation} />
+      <ReplyBox conversationId={id} suggestedReply={lastInbound?.ai_draft_reply ?? undefined} />
     </div>
   )
 }

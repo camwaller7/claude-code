@@ -1,21 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteClient } from '@/lib/supabase/server'
+import { createRouteHandlerSupabase } from '@/lib/supabase/server'
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  const supabase = await createRouteClient()
-  const body = await request.json()
-  const { body: replyBody } = body
+  const supabase = createRouteHandlerSupabase()
+  const { body } = await request.json()
 
-  const { data: message, error } = await supabase
+  const { data, error } = await supabase
     .from('messages')
     .insert({
       conversation_id: id,
       direction: 'outbound',
-      body: replyBody,
+      body,
+      sent_at: new Date().toISOString(),
     })
     .select()
     .single()
@@ -27,6 +27,5 @@ export async function POST(
     .update({ status: 'replied', last_message_at: new Date().toISOString() })
     .eq('id', id)
 
-  // Platform-specific send calls will be added per integration
-  return NextResponse.json(message, { status: 201 })
+  return NextResponse.json(data, { status: 201 })
 }

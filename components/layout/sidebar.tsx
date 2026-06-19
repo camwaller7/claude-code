@@ -1,7 +1,8 @@
 'use client'
+
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Inbox, Briefcase, Users, BarChart2, Send, Plug } from 'lucide-react'
+import { Inbox, Briefcase, Users, BarChart2, Send, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const navItems = [
@@ -16,20 +17,20 @@ export function Sidebar() {
   const pathname = usePathname()
 
   return (
-    <aside className="flex h-screen w-56 shrink-0 flex-col border-r border-zinc-200 bg-white">
-      <div className="flex h-14 items-center border-b border-zinc-200 px-4">
-        <span className="text-sm font-semibold tracking-tight">Influencer PA</span>
+    <aside className="flex h-screen w-56 flex-col border-r bg-background">
+      <div className="flex h-14 items-center border-b px-4">
+        <span className="text-sm font-semibold text-muted-foreground">Navigation</span>
       </div>
-      <nav className="flex flex-1 flex-col gap-1 p-3">
+      <nav className="flex flex-1 flex-col gap-1 p-2">
         {navItems.map(({ href, label, icon: Icon }) => (
           <Link
             key={href}
             href={href}
             className={cn(
-              'flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+              'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
               pathname.startsWith(href)
-                ? 'bg-zinc-900 text-white'
-                : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'
+                ? 'bg-accent text-accent-foreground'
+                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
             )}
           >
             <Icon className="h-4 w-4" />
@@ -37,17 +38,17 @@ export function Sidebar() {
           </Link>
         ))}
       </nav>
-      <div className="border-t border-zinc-200 p-3">
+      <div className="border-t p-2">
         <Link
           href="/onboarding"
           className={cn(
-            'flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-            pathname.startsWith('/onboarding')
-              ? 'bg-zinc-900 text-white'
-              : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900'
+            'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+            pathname === '/onboarding'
+              ? 'bg-accent text-accent-foreground'
+              : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
           )}
         >
-          <Plug className="h-4 w-4" />
+          <Settings className="h-4 w-4" />
           Connections
         </Link>
       </div>

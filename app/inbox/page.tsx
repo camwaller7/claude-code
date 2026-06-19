@@ -3,23 +3,25 @@ import { ConversationList } from '@/components/inbox/ConversationList'
 import type { Conversation } from '@/types'
 
 export default async function InboxPage() {
-  const supabase = await createServerClient()
+  const supabase = createServerClient()
   const { data: conversations } = await supabase
     .from('conversations')
     .select('*')
     .order('last_message_at', { ascending: false })
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between border-b border-zinc-200 px-6 py-4">
-        <h1 className="text-lg font-semibold">Inbox</h1>
-        <span className="text-sm text-zinc-500">
-          {conversations?.filter((c: Conversation) => c.status === 'needs_reply').length ?? 0} need reply
-        </span>
+    <div>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold">Inbox</h1>
+        <p className="text-sm text-muted-foreground">All your messages in one place</p>
       </div>
-      <div className="flex-1 overflow-y-auto">
-        <ConversationList conversations={(conversations as Conversation[]) ?? []} />
-      </div>
+      {!conversations || conversations.length === 0 ? (
+        <div className="flex h-64 items-center justify-center rounded-lg border border-dashed">
+          <p className="text-muted-foreground">No conversations yet</p>
+        </div>
+      ) : (
+        <ConversationList conversations={conversations as Conversation[]} />
+      )}
     </div>
   )
 }
