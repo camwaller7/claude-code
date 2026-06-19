@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { Shell } from '@/components/layout/shell'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -96,11 +98,11 @@ export default async function OnboardingPage() {
                   {config.manualNote ? (
                     <p className="text-sm text-muted-foreground">{config.manualNote}</p>
                   ) : config.connectHref ? (
-                    <Button asChild variant="outline" size="sm">
-                      <Link href={config.connectHref}>
+                    <Link href={config.connectHref}>
+                      <Button variant="outline" size="sm">
                         {isConnected ? 'Reconnect' : 'Connect'}
-                      </Link>
-                    </Button>
+                      </Button>
+                    </Link>
                   ) : null}
                 </CardContent>
               </Card>
