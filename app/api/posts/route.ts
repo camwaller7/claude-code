@@ -3,7 +3,7 @@ import { createRouteHandlerSupabase } from '@/lib/supabase/server'
 import { inngest } from '@/lib/inngest/client'
 
 export async function GET() {
-  const supabase = createRouteHandlerSupabase()
+  const supabase = await createRouteHandlerSupabase()
   const { data, error } = await supabase
     .from('posts')
     .select('*')
@@ -14,7 +14,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = createRouteHandlerSupabase()
+  const supabase = await createRouteHandlerSupabase()
   const body = await request.json()
   const { caption, hashtags, platforms, media_url, scheduled_at } = body
 

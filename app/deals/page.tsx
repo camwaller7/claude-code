@@ -13,7 +13,7 @@ function statusVariant(status: DealStatus): 'default' | 'secondary' | 'destructi
 }
 
 export default async function DealsPage() {
-  const supabase = createServerClient()
+  const supabase = await createServerClient()
   const { data: deals } = await supabase.from('deals').select('*').order('created_at', { ascending: false })
 
   const byStatus = (status: DealStatus) => (deals ?? []).filter((d: Deal) => d.status === status)

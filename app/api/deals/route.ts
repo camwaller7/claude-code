@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerSupabase } from '@/lib/supabase/server'
 
 export async function GET(request: NextRequest) {
-  const supabase = createRouteHandlerSupabase()
+  const supabase = await createRouteHandlerSupabase()
   const status = request.nextUrl.searchParams.get('status')
 
   let query = supabase.from('deals').select('*').order('created_at', { ascending: false })
@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = createRouteHandlerSupabase()
+  const supabase = await createRouteHandlerSupabase()
   const body = await request.json()
   const { brand_name, contact_name, deal_value, currency, conversation_id } = body
 

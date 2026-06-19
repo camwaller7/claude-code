@@ -3,7 +3,7 @@ import { ConversationList } from '@/components/inbox/ConversationList'
 import type { Conversation } from '@/types'
 
 export default async function InboxPage() {
-  const supabase = createServerClient()
+  const supabase = await createServerClient()
   const { data: conversations } = await supabase
     .from('conversations')
     .select('*')

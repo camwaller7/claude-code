@@ -6,7 +6,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  const supabase = createRouteHandlerSupabase()
+  const supabase = await createRouteHandlerSupabase()
   const { body } = await request.json()
 
   const { data, error } = await supabase

@@ -10,7 +10,7 @@ interface Props {
 
 export default async function ConversationPage({ params }: Props) {
   const { id } = await params
-  const supabase = createServerClient()
+  const supabase = await createServerClient()
 
   const { data: conversation } = await supabase
     .from('conversations')

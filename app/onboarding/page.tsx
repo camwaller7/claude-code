@@ -1,58 +1,40 @@
 import { Shell } from '@/components/layout/shell'
-import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 
 const platforms = [
-  {
-    name: 'Instagram & Facebook',
-    description: 'Connect via Meta Business API. Add yourself as a test user in your Meta Developer app — no App Review needed for one creator.',
-    key: 'meta',
-  },
-  {
-    name: 'X (Twitter)',
-    description: 'Connect via X API v2. Pay-per-use pricing — at pilot volume expect a few dollars/month.',
-    key: 'x',
-  },
-  {
-    name: 'Gmail',
-    description: 'Connect via Gmail API with OAuth. Your emails will appear in the unified inbox and be triaged by AI.',
-    key: 'gmail',
-  },
-  {
-    name: 'TikTok',
-    description: 'Connected via a third-party scheduling provider (no direct TikTok API — they require a compliance audit). Post scheduling only; no DM inbox.',
-    key: 'tiktok',
-  },
-  {
-    name: 'Threads',
-    description: 'Post scheduling via Meta Graph API. Note: Threads DM inbox is not available — Meta has not released a DM API for Threads yet.',
-    key: 'threads',
-  },
+  { name: 'Instagram / Facebook (Meta)', key: 'meta', description: 'Connect your Meta account for Instagram, Facebook, and Threads.' },
+  { name: 'X (Twitter)', key: 'x', description: 'Connect your X account to sync DMs and mentions.' },
+  { name: 'Gmail', key: 'gmail', description: 'Connect Gmail to manage email brand inquiries.' },
+  { name: 'TikTok', key: 'tiktok', description: 'Connect TikTok via scheduling provider.' },
 ]
 
 export default function OnboardingPage() {
   return (
     <Shell>
-      <div className="flex flex-col h-full">
-        <div className="border-b border-zinc-200 px-6 py-4">
-          <h1 className="text-lg font-semibold">Platform Connections</h1>
-          <p className="text-sm text-zinc-500 mt-0.5">Connect your accounts to start pulling in messages and scheduling posts.</p>
+      <div className="max-w-2xl">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold">Platform Connections</h1>
+          <p className="text-sm text-muted-foreground">Connect your social platforms to start syncing messages.</p>
         </div>
-        <div className="flex flex-col gap-4 p-6 max-w-2xl">
+        <div className="flex flex-col gap-4">
           {platforms.map((p) => (
             <Card key={p.key}>
-              <CardContent className="flex items-center justify-between gap-4 p-4">
-                <div>
-                  <p className="text-sm font-medium">{p.name}</p>
-                  <p className="text-xs text-zinc-500 mt-0.5 max-w-md">{p.description}</p>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">{p.name}</CardTitle>
+                  <Badge variant="outline">Disconnected</Badge>
                 </div>
+                <CardDescription>{p.description}</CardDescription>
+              </CardHeader>
+              <CardContent>
                 <Button variant="outline" size="sm" disabled>
-                  Connect
+                  Connect (coming soon)
                 </Button>
               </CardContent>
             </Card>
           ))}
-          <p className="text-xs text-zinc-400 mt-2">OAuth flows for each platform will be wired up in the next build phase.</p>
         </div>
       </div>
     </Shell>

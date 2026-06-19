@@ -1,60 +1,58 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { Badge } from '@/components/ui/badge'
-import { NewPostButton } from '@/components/post-portal/NewPostButton'
-import type { Post } from '@/types'
+import { NewPostDialog } from '@/components/post-portal/NewPostDialog'
+import type { Post, PostStatus } from '@/types'
 
-const statusColor: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  draft: 'outline',
-  scheduled: 'secondary',
-  publishing: 'secondary',
-  published: 'default',
-  failed: 'destructive',
+function statusVariant(status: PostStatus): 'default' | 'secondary' | 'destructive' | 'outline' {
+  if (status === 'published') return 'default'
+  if (status === 'failed') return 'destructive'
+  if (status === 'scheduled' || status === 'publishing') return 'secondary'
+  return 'outline'
 }
 
 export default async function PostPortalPage() {
   const supabase = await createServerClient()
-  const { data: posts } = await supabase
-    .from('posts')
-    .select('*')
-    .order('scheduled_at', { ascending: false, nullsFirst: false })
+  const { data: posts } = await supabase.from('posts').select('*').order('scheduled_at', { ascending: false })
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between border-b border-zinc-200 px-6 py-4">
-        <h1 className="text-lg font-semibold">Post Portal</h1>
-        <NewPostButton />
+    <div>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Post Portal</h1>
+          <p className="text-sm text-muted-foreground">Schedule and manage your content</p>
+        </div>
+        <NewPostDialog />
       </div>
-      <div className="flex-1 overflow-y-auto p-6">
-        {!posts?.length ? (
-          <div className="flex flex-col items-center justify-center h-48 text-zinc-400">
-            <p className="text-sm">No posts yet</p>
-            <p className="text-xs mt-1">Schedule your first post to get started</p>
-          </div>
-        ) : (
-          <ul className="flex flex-col gap-3">
-            {(posts as Post[]).map((post) => (
-              <li key={post.id} className="flex items-start gap-4 rounded-lg border border-zinc-200 bg-white p-4">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-zinc-800 line-clamp-2">{post.caption || '(no caption)'}</p>
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    {post.platforms.map((p) => (
-                      <span key={p} className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium uppercase text-zinc-600">{p}</span>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex flex-col items-end gap-1 shrink-0">
-                  <Badge variant={statusColor[post.status] ?? 'outline'}>{post.status}</Badge>
-                  {post.scheduled_at && (
-                    <span className="text-xs text-zinc-400">
-                      {new Date(post.scheduled_at).toLocaleString()}
+      {!posts || posts.length === 0 ? (
+        <div className="flex h-64 items-center justify-center rounded-lg border border-dashed">
+          <p className="text-muted-foreground">No posts yet. Create your first post!</p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {posts.map((post: Post) => (
+            <div key={post.id} className="flex items-center justify-between rounded-lg border bg-card p-4">
+              <div className="flex-1">
+                <p className="text-sm font-medium line-clamp-1">{post.caption}</p>
+                <div className="mt-1 flex gap-1">
+                  {(post.platforms ?? []).map((p: string) => (
+                    <span key={p} className="inline-flex h-5 items-center rounded bg-muted px-1.5 text-xs font-medium">
+                      {p}
                     </span>
-                  )}
+                  ))}
                 </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+              </div>
+              <div className="flex items-center gap-3">
+                {post.scheduled_at && (
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(post.scheduled_at).toLocaleDateString()}
+                  </span>
+                )}
+                <Badge variant={statusVariant(post.status as PostStatus)}>{post.status}</Badge>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

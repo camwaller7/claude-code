@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerSupabase } from '@/lib/supabase/server'
 
 export async function GET(request: NextRequest) {
-  const supabase = createRouteHandlerSupabase()
+  const supabase = await createRouteHandlerSupabase()
   const searchParams = request.nextUrl.searchParams
   const status = searchParams.get('status')
   const category = searchParams.get('category')
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = createRouteHandlerSupabase()
+  const supabase = await createRouteHandlerSupabase()
   const body = await request.json()
   const { platform, external_thread_id, contact_name, contact_handle } = body
 
