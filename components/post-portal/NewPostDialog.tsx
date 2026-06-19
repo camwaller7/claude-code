@@ -20,6 +20,7 @@ export function NewPostDialog() {
   const [open, setOpen] = useState(false)
   const [caption, setCaption] = useState('')
   const [hashtags, setHashtags] = useState('')
+  const [mediaUrl, setMediaUrl] = useState('')
   const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>([])
   const [scheduledAt, setScheduledAt] = useState('')
   const [loading, setLoading] = useState(false)
@@ -41,6 +42,7 @@ export function NewPostDialog() {
         body: JSON.stringify({
           caption,
           hashtags,
+          media_url: mediaUrl || null,
           platforms: selectedPlatforms,
           scheduled_at: scheduledAt || null,
         }),
@@ -48,6 +50,7 @@ export function NewPostDialog() {
       setOpen(false)
       setCaption('')
       setHashtags('')
+      setMediaUrl('')
       setSelectedPlatforms([])
       setScheduledAt('')
     } finally {
@@ -102,6 +105,16 @@ export function NewPostDialog() {
                 </button>
               ))}
             </div>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="media_url">Media URL (optional)</Label>
+            <Input
+              id="media_url"
+              type="url"
+              value={mediaUrl}
+              onChange={(e) => setMediaUrl(e.target.value)}
+              placeholder="https://… (required for Instagram)"
+            />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="scheduled_at">Schedule For (optional)</Label>

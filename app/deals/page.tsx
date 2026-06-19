@@ -1,6 +1,7 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { NewDealDialog } from '@/components/deals/NewDealDialog'
+import { DealCard } from '@/components/deals/DealCard'
 import type { Deal, DealStatus } from '@/types'
 
 const DEAL_STATUSES: DealStatus[] = ['inquiry', 'negotiating', 'contracted', 'delivered', 'paid', 'lost']
@@ -20,9 +21,12 @@ export default async function DealsPage() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Deals Pipeline</h1>
-        <p className="text-sm text-muted-foreground">Track brand deal progress</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Deals Pipeline</h1>
+          <p className="text-sm text-muted-foreground">Track brand deal progress</p>
+        </div>
+        <NewDealDialog />
       </div>
       <div className="grid grid-cols-3 gap-4 xl:grid-cols-6">
         {DEAL_STATUSES.map((status) => {
@@ -34,19 +38,7 @@ export default async function DealsPage() {
                 <span className="text-xs text-muted-foreground">{statusDeals.length}</span>
               </div>
               {statusDeals.map((deal: Deal) => (
-                <Card key={deal.id} className="text-sm">
-                  <CardHeader className="p-3 pb-1">
-                    <CardTitle className="text-sm">{deal.brand_name}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-3 pt-0">
-                    {deal.deal_value != null && (
-                      <p className="font-semibold text-green-600">
-                        {deal.currency} {deal.deal_value.toLocaleString()}
-                      </p>
-                    )}
-                    <Badge variant={statusVariant(deal.status)} className="mt-1">{deal.status}</Badge>
-                  </CardContent>
-                </Card>
+                <DealCard key={deal.id} deal={deal} />
               ))}
               {statusDeals.length === 0 && (
                 <div className="rounded border border-dashed p-3 text-center text-xs text-muted-foreground">

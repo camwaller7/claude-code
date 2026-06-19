@@ -1,6 +1,7 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { Badge } from '@/components/ui/badge'
 import { NewPostDialog } from '@/components/post-portal/NewPostDialog'
+import { PublishNowButton } from '@/components/post-portal/PublishNowButton'
 import type { Post, PostStatus } from '@/types'
 
 function statusVariant(status: PostStatus): 'default' | 'secondary' | 'destructive' | 'outline' {
@@ -48,6 +49,7 @@ export default async function PostPortalPage() {
                   </span>
                 )}
                 <Badge variant={statusVariant(post.status as PostStatus)}>{post.status}</Badge>
+                <PublishNowButton postId={post.id} status={post.status as PostStatus} />
               </div>
             </div>
           ))}
