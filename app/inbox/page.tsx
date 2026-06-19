@@ -1,6 +1,7 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { ConversationList } from '@/components/inbox/ConversationList'
 import { InboxFilters } from '@/components/inbox/InboxFilters'
+import { RealtimeInbox } from '@/components/inbox/RealtimeInbox'
 import { Suspense } from 'react'
 import type { Conversation } from '@/types'
 
@@ -24,6 +25,7 @@ export default async function InboxPage({ searchParams }: Props) {
 
   return (
     <div>
+      <RealtimeInbox />
       <div className="mb-4">
         <h1 className="text-2xl font-bold">Inbox</h1>
         <p className="text-sm text-muted-foreground">All your messages in one place</p>
