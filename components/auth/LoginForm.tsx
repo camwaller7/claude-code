@@ -17,18 +17,21 @@ export function LoginForm() {
     setLoading(true)
     setError(null)
 
-    const { error: authError } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
-      },
-    })
-
-    setLoading(false)
-    if (authError) {
-      setError(authError.message)
-    } else {
-      setSent(true)
+    try {
+      const redirectTo = `${window.location.origin}/auth/callback`
+      const { error: authError } = await supabase.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: redirectTo },
+      })
+      if (authError) {
+        setError(authError.message)
+      } else {
+        setSent(true)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong')
+    } finally {
+      setLoading(false)
     }
   }
 
