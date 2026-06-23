@@ -3,11 +3,12 @@ import { createServerClient } from '@/lib/supabase/server'
 import { LoginForm } from '@/components/auth/LoginForm'
 
 export default async function LoginPage() {
-  const supabase = await createServerClient()
-  const { data: { session } } = await supabase.auth.getSession()
-
-  if (session) {
-    redirect('/inbox')
+  try {
+    const supabase = await createServerClient()
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session) redirect('/inbox')
+  } catch (e) {
+    console.error('[login] supabase error:', e)
   }
 
   return (
