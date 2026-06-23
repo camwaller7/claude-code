@@ -62,12 +62,13 @@ export async function POST() {
 
       if (!conv) continue
 
-      await adminSupabase.from('messages').insert({
+      await adminSupabase.from('messages').upsert({
         conversation_id: conv.id,
         direction,
         body: event.text,
+        external_message_id: event.id,
         sent_at: event.created_at,
-      })
+      }, { onConflict: 'external_message_id', ignoreDuplicates: true })
 
       if (direction === 'inbound') {
         const triage = await triageMessage(event.text, event.sender_id, 'x')

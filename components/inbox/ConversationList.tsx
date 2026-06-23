@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import type { Conversation } from '@/types'
 import { Badge } from '@/components/ui/badge'
-import { cn } from '@/lib/utils'
+import { cn, relativeTime } from '@/lib/utils'
 
 function platformLabel(platform: string): string {
   const map: Record<string, string> = {
@@ -15,18 +15,6 @@ function platformLabel(platform: string): string {
     gmail: 'GM',
   }
   return map[platform] ?? platform.toUpperCase()
-}
-
-function relativeTime(dateStr: string | null): string {
-  if (!dateStr) return ''
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const minutes = Math.floor(diff / 60000)
-  if (minutes < 1) return 'just now'
-  if (minutes < 60) return `${minutes}m ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}h ago`
-  const days = Math.floor(hours / 24)
-  return `${days}d ago`
 }
 
 function categoryVariant(category: string): 'default' | 'secondary' | 'destructive' | 'outline' {
@@ -69,7 +57,7 @@ export function ConversationList({ conversations }: Props) {
             <Badge variant={categoryVariant(conv.category)}>
               {conv.category.replace('_', ' ')}
             </Badge>
-            <span className="text-xs text-muted-foreground">{relativeTime(conv.last_message_at)}</span>
+            <span className="text-xs text-muted-foreground">{conv.last_message_at ? relativeTime(conv.last_message_at) : ''}</span>
           </div>
         </div>
       ))}

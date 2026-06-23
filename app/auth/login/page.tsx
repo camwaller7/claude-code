@@ -4,7 +4,9 @@ import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { LoginForm } from '@/components/auth/LoginForm'
 
-export default async function LoginPage() {
+type Props = { searchParams: Promise<{ error?: string }> }
+
+export default async function LoginPage({ searchParams }: Props) {
   try {
     const supabase = await createServerClient()
     const { data: { session } } = await supabase.auth.getSession()
@@ -12,6 +14,8 @@ export default async function LoginPage() {
   } catch (e) {
     console.error('[login] supabase error:', e)
   }
+
+  const { error } = await searchParams
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
@@ -22,6 +26,9 @@ export default async function LoginPage() {
             Your unified inbox, CRM, and post portal — all in one place.
           </p>
         </div>
+        {error === 'auth' && (
+          <p className="text-sm text-destructive text-center">Sign-in failed. Please try again.</p>
+        )}
         <LoginForm />
       </div>
     </div>

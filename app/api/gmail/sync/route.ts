@@ -120,12 +120,13 @@ export async function POST() {
         const body = extractBody(msg.payload)
         lastInboundBody = body
 
-        await adminSupabase.from('messages').insert({
+        await adminSupabase.from('messages').upsert({
           conversation_id: conv.id,
           direction: 'inbound',
           body,
+          external_message_id: msg.id,
           sent_at: new Date().toISOString(),
-        })
+        }, { onConflict: 'external_message_id', ignoreDuplicates: true })
 
         synced++
       }

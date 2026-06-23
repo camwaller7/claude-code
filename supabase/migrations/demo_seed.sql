@@ -33,20 +33,20 @@ from c;
 -- 2. Instagram — Follow-up on collab
 with c as (
   insert into conversations (platform, external_thread_id, contact_name, contact_handle, category, status, priority, last_message_at)
-  values ('instagram', 'demo_ig_002', 'Jake Torres', '@jaketorres.fit', 'collab', 'needs_reply', 0, now() - interval '5 hours')
+  values ('instagram', 'demo_ig_002', 'Jake Torres', '@jaketorres.fit', 'brand_deal', 'needs_reply', 0, now() - interval '5 hours')
   returning id
 )
 insert into messages (conversation_id, direction, body, ai_category, ai_draft_reply, sent_at)
-values ((select id from conversations where external_thread_id = 'demo_ig_002'), 'inbound', 'Hey! Love your fitness content. Would you be down for a collab reel? I think our audiences would overlap really well 🔥', 'collab', 'Hey Jake! Your content is great too — a collab reel sounds fun! What did you have in mind? Happy to brainstorm some ideas together.', now() - interval '5 hours');
+values ((select id from conversations where external_thread_id = 'demo_ig_002'), 'inbound', 'Hey! Love your fitness content. Would you be down for a collab reel? I think our audiences would overlap really well 🔥', 'brand_deal', 'Hey Jake! Your content is great too — a collab reel sounds fun! What did you have in mind? Happy to brainstorm some ideas together.', now() - interval '5 hours');
 
 -- 3. Facebook — Course question
 with c as (
   insert into conversations (platform, external_thread_id, contact_name, contact_handle, category, status, priority, last_message_at)
-  values ('facebook', 'demo_fb_001', 'Emma Rodriguez', 'emma.rodriguez.92', 'course_client', 'needs_reply', 0, now() - interval '1 day')
+  values ('facebook', 'demo_fb_001', 'Emma Rodriguez', 'emma.rodriguez.92', 'client', 'needs_reply', 0, now() - interval '1 day')
   returning id
 )
 insert into messages (conversation_id, direction, body, ai_category, ai_draft_reply, sent_at)
-values ((select id from conversations where external_thread_id = 'demo_fb_001'), 'inbound', 'Hi! I just purchased your content creator course. Is there a community group I can join? Also, when does module 3 drop?', 'course_client', 'Hi Emma! Welcome to the course — so excited to have you! Yes, the community group link is in the welcome email. Module 3 drops this Friday. Let me know if you have any questions!', now() - interval '1 day');
+values ((select id from conversations where external_thread_id = 'demo_fb_001'), 'inbound', 'Hi! I just purchased your content creator course. Is there a community group I can join? Also, when does module 3 drop?', 'client', 'Hi Emma! Welcome to the course — so excited to have you! Yes, the community group link is in the welcome email. Module 3 drops this Friday. Let me know if you have any questions!', now() - interval '1 day');
 
 -- 4. X (Twitter) — Brand deal reply chain
 with c as (
@@ -98,7 +98,7 @@ insert into messages (conversation_id, direction, body, sent_at) values
 -- 7. Gmail — Spam/irrelevant
 with c as (
   insert into conversations (platform, external_thread_id, contact_name, contact_handle, category, status, priority, last_message_at, subject)
-  values ('gmail', 'demo_gmail_002', 'No Reply', 'noreply@randompromo.com', 'other', 'replied', 0, now() - interval '3 days', 'You''ve been selected!')
+  values ('gmail', 'demo_gmail_002', 'No Reply', 'noreply@randompromo.com', 'spam', 'replied', 0, now() - interval '3 days', 'You''ve been selected!')
   returning id
 )
 insert into messages (conversation_id, direction, body, sent_at)
