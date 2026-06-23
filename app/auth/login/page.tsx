@@ -7,6 +7,8 @@ import { LoginForm } from '@/components/auth/LoginForm'
 type Props = { searchParams: Promise<{ error?: string }> }
 
 export default async function LoginPage({ searchParams }: Props) {
+  console.log('[login] SUPABASE_URL set:', !!process.env.NEXT_PUBLIC_SUPABASE_URL)
+  console.log('[login] SUPABASE_ANON_KEY set:', !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
   try {
     const supabase = await createServerClient()
     const { data: { session } } = await supabase.auth.getSession()
