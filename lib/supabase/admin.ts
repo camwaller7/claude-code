@@ -5,7 +5,7 @@ let _adminSupabase: SupabaseClient | null = null
 function getAdminSupabase(): SupabaseClient {
   if (!_adminSupabase) {
     _adminSupabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xbpgnqprsiembfwpzqit.supabase.co',
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
