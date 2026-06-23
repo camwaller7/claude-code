@@ -1,4 +1,4 @@
-import { createServerClient as _createServerClient } from '@supabase/auth-helpers-nextjs'
+import { createServerClient as _createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
 export async function createServerClient() {
@@ -17,7 +17,7 @@ export async function createServerClient() {
               cookieStore.set(name, value, options)
             )
           } catch {
-            // The `setAll` method is called from a Server Component.
+            // Called from a Server Component — safe to ignore
           }
         },
       },
