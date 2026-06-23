@@ -1,4 +1,5 @@
 import { createServerClient } from '@/lib/supabase/server'
+import { requireAuth } from '@/lib/auth/requireAuth'
 import { Badge } from '@/components/ui/badge'
 import { NewDealDialog } from '@/components/deals/NewDealDialog'
 import { DealCard } from '@/components/deals/DealCard'
@@ -14,6 +15,7 @@ function statusVariant(status: DealStatus): 'default' | 'secondary' | 'destructi
 }
 
 export default async function DealsPage() {
+  await requireAuth()
   const supabase = await createServerClient()
   const { data: deals } = await supabase.from('deals').select('*').order('created_at', { ascending: false })
 

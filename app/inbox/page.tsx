@@ -1,4 +1,5 @@
 import { createServerClient } from '@/lib/supabase/server'
+import { requireAuth } from '@/lib/auth/requireAuth'
 import { ConversationList } from '@/components/inbox/ConversationList'
 import { InboxFilters } from '@/components/inbox/InboxFilters'
 import { RealtimeInbox } from '@/components/inbox/RealtimeInbox'
@@ -11,6 +12,7 @@ interface Props {
 
 export default async function InboxPage({ searchParams }: Props) {
   const { platform, category } = await searchParams
+  await requireAuth()
   const supabase = await createServerClient()
 
   let query = supabase

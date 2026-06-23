@@ -1,10 +1,12 @@
 import { createServerClient } from '@/lib/supabase/server'
+import { requireAuth } from '@/lib/auth/requireAuth'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { NewClientDialog } from '@/components/clients/NewClientDialog'
 import type { CreatorClient } from '@/types'
 
 export default async function ClientsPage() {
+  await requireAuth()
   const supabase = await createServerClient()
   const { data: clients } = await supabase
     .from('clients')

@@ -1,4 +1,5 @@
 import { createServerClient } from '@/lib/supabase/server'
+import { requireAuth } from '@/lib/auth/requireAuth'
 import { Badge } from '@/components/ui/badge'
 import { NewPostDialog } from '@/components/post-portal/NewPostDialog'
 import { PublishNowButton } from '@/components/post-portal/PublishNowButton'
@@ -12,6 +13,7 @@ function statusVariant(status: PostStatus): 'default' | 'secondary' | 'destructi
 }
 
 export default async function PostPortalPage() {
+  await requireAuth()
   const supabase = await createServerClient()
   const { data: posts } = await supabase.from('posts').select('*').order('scheduled_at', { ascending: false })
 

@@ -1,4 +1,5 @@
 import { createServerClient } from '@/lib/supabase/server'
+import { requireAuth } from '@/lib/auth/requireAuth'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 function fmt(n: number) {
@@ -6,6 +7,7 @@ function fmt(n: number) {
 }
 
 export default async function DashboardPage() {
+  await requireAuth()
   const supabase = await createServerClient()
 
   const [
