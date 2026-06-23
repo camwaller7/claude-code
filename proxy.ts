@@ -31,9 +31,14 @@ export async function proxy(request: NextRequest) {
     }
   )
 
-  const { data: { session } } = await supabase.auth.getSession()
-
-  if (!session) {
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      const loginUrl = new URL('/auth/login', request.url)
+      return NextResponse.redirect(loginUrl)
+    }
+  } catch (e) {
+    console.error('[proxy] auth error:', e)
     const loginUrl = new URL('/auth/login', request.url)
     return NextResponse.redirect(loginUrl)
   }
