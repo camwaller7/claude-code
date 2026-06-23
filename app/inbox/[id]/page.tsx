@@ -1,4 +1,5 @@
 import { createServerClient } from '@/lib/supabase/server'
+import { requireAuth } from '@/lib/auth/requireAuth'
 import { MessageThread } from '@/components/inbox/MessageThread'
 import { ReplyBox } from '@/components/inbox/ReplyBox'
 import { ConversationActions } from '@/components/inbox/ConversationActions'
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export default async function ConversationPage({ params }: Props) {
+  await requireAuth()
   const { id } = await params
   const supabase = await createServerClient()
 

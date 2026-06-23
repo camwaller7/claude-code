@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { adminSupabase } from '@/lib/supabase/admin'
+import { requireAuth } from '@/lib/auth/requireAuth'
 import { Platform, PlatformConnection } from '@/types'
 import Link from 'next/link'
 
@@ -57,6 +58,7 @@ const PLATFORM_CONFIGS: PlatformConfig[] = [
 ]
 
 export default async function OnboardingPage() {
+  await requireAuth()
   const { data: connections } = await adminSupabase
     .from('platform_connections')
     .select('*')
