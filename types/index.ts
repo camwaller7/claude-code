@@ -82,3 +82,30 @@ export interface Post {
   platform_post_ids: Record<string, string> | null
   created_at: string
 }
+
+export type LLMProvider = 'anthropic' | 'openai' | 'google' | 'groq'
+
+export interface LLMModel {
+  provider: LLMProvider
+  id: string
+  label: string
+  contextWindow: number
+  inputPricePer1k: number
+  outputPricePer1k: number
+}
+
+export interface AppSettings {
+  id: number
+  llm_provider: LLMProvider
+  llm_model: string
+}
+
+export interface TokenUsage {
+  id: string
+  provider: string
+  model: string
+  feature: string
+  input_tokens: number
+  output_tokens: number
+  created_at: string
+}
