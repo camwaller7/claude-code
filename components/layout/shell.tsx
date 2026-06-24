@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Sidebar } from './sidebar'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { AIChat } from '@/components/chat/AIChat'
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false)
@@ -29,6 +30,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </header>
         <main className="flex-1 overflow-auto">{children}</main>
       </div>
+      <AIChat />
     </div>
   )
 }
