@@ -18,7 +18,8 @@ export function LoginForm() {
     setError(null)
 
     try {
-      const redirectTo = `${window.location.origin}/auth/callback`
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin
+      const redirectTo = `${appUrl}/auth/callback`
       const { error: authError } = await supabase.auth.signInWithOtp({
         email,
         options: { emailRedirectTo: redirectTo },
