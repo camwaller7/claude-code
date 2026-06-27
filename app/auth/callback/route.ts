@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
       console.error('[auth/callback] verifyOtp error:', error.message)
       return NextResponse.redirect(`${appUrl}/auth/login?error=auth`)
     }
-    return NextResponse.redirect(`${appUrl}/inbox`)
+    return NextResponse.redirect(`${appUrl}/dashboard`)
   }
 
   if (code) {
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
       console.error('[auth/callback] exchange error:', error.message)
       return NextResponse.redirect(`${appUrl}/auth/login?error=auth`)
     }
-    return NextResponse.redirect(`${appUrl}/inbox`)
+    return NextResponse.redirect(`${appUrl}/dashboard`)
   }
 
   return NextResponse.redirect(`${appUrl}/auth/login?error=auth`)

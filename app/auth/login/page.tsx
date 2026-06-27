@@ -12,7 +12,7 @@ export default async function LoginPage({ searchParams }: Props) {
   try {
     const supabase = await createServerClient()
     const { data: { session } } = await supabase.auth.getSession()
-    if (session) redirect('/inbox')
+    if (session) redirect('/dashboard')
   } catch (e) {
     console.error('[login] supabase error:', e)
   }
