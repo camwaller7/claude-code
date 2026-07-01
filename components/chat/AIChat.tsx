@@ -98,7 +98,7 @@ export function AIChat() {
             {messages.map((m, i) => (
               <div key={i} className={cn('flex', m.role === 'user' ? 'justify-end' : 'justify-start')}>
                 <div className={cn(
-                  'max-w-[85%] rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap',
+                  'max-w-[85%] rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap break-words',
                   m.role === 'user'
                     ? 'bg-gradient-to-br from-violet-500 to-purple-600 text-white rounded-br-sm'
                     : 'bg-muted text-foreground rounded-bl-sm'

@@ -13,19 +13,28 @@ export function ReplyBox({ conversationId, suggestedReply }: Props) {
   const [body, setBody] = useState(suggestedReply ?? '')
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!body.trim()) return
     setLoading(true)
+    setError(null)
     try {
-      await fetch(`/api/conversations/${conversationId}/reply`, {
+      const res = await fetch(`/api/conversations/${conversationId}/reply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ body }),
       })
+      if (!res.ok) {
+        const data = await res.json().catch(() => null) as { error?: string } | null
+        setError(data?.error ?? 'Failed to send reply — please try again.')
+        return
+      }
       setSent(true)
       setBody('')
+    } catch {
+      setError('Failed to send reply — check your connection and try again.')
     } finally {
       setLoading(false)
     }
@@ -47,6 +56,7 @@ export function ReplyBox({ conversationId, suggestedReply }: Props) {
         placeholder="Write a reply..."
         rows={4}
       />
+      {error && <p className="text-sm text-destructive">{error}</p>}
       <div className="flex justify-end">
         <Button type="submit" disabled={loading || !body.trim()}>
           {loading ? 'Sending...' : 'Send Reply'}

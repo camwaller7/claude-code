@@ -29,7 +29,7 @@ export async function GET(_request: NextRequest) {
 
   const params = new URLSearchParams({
     response_type: 'code',
-    client_id: process.env.X_API_KEY!,
+    client_id: process.env.X_CLIENT_ID!,
     redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/x/callback`,
     scope: 'dm.read dm.write tweet.read tweet.write users.read offline.access',
     state,

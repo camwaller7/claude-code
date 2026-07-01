@@ -39,21 +39,21 @@ export function ConversationList({ conversations }: Props) {
           onClick={() => router.push(`/inbox/${conv.id}`)}
           className="flex cursor-pointer items-center justify-between rounded-lg border bg-card p-4 hover:bg-accent transition-colors"
         >
-          <div className="flex items-center gap-3">
-            <span className="inline-flex h-8 w-10 items-center justify-center rounded bg-muted text-xs font-bold">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <span className="inline-flex h-8 w-10 shrink-0 items-center justify-center rounded bg-muted text-xs font-bold">
               {platformLabel(conv.platform)}
             </span>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <span className="font-medium">{conv.contact_name}</span>
+                <span className="font-medium truncate">{conv.contact_name}</span>
                 {conv.priority > 5 && (
                   <span className="h-2 w-2 rounded-full bg-red-500" title="High priority" />
                 )}
               </div>
-              <span className="text-xs text-muted-foreground">{conv.contact_handle}</span>
+              <span className="block text-xs text-muted-foreground truncate">{conv.contact_handle}</span>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 shrink-0">
             <Badge variant={categoryVariant(conv.category)}>
               {conv.category.replace('_', ' ')}
             </Badge>

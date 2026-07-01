@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { adminSupabase } from '@/lib/supabase/admin'
+import { requireApiAuth } from '@/lib/auth/requireApiAuth'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -163,6 +164,9 @@ async function runTool(name: string, input: Record<string, unknown>): Promise<st
 }
 
 export async function POST(request: NextRequest) {
+  const unauthorized = await requireApiAuth(request)
+  if (unauthorized) return unauthorized
+
   const { messages } = await request.json() as { messages: Anthropic.MessageParam[] }
 
   try {

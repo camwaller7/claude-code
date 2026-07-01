@@ -17,7 +17,7 @@ function MessageBubble({ message }: { message: Message }) {
     <div className={cn('flex flex-col gap-1', isOutbound ? 'items-end' : 'items-start')}>
       <div
         className={cn(
-          'max-w-[70%] rounded-lg px-4 py-2 text-sm',
+          'max-w-[70%] rounded-lg px-4 py-2 text-sm whitespace-pre-wrap break-words',
           isOutbound
             ? 'bg-primary text-primary-foreground'
             : 'bg-muted text-foreground'

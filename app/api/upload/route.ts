@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminSupabase } from '@/lib/supabase/admin'
+import { requireApiAuth } from '@/lib/auth/requireApiAuth'
 
 const BUCKET = 'post-media'
 const MAX_BYTES = 50 * 1024 * 1024 // 50 MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4']
 
 export async function POST(request: NextRequest) {
+  const unauthorized = await requireApiAuth(request)
+  if (unauthorized) return unauthorized
+
   const formData = await request.formData()
   const file = formData.get('file') as File | null
 

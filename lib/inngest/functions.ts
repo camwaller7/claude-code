@@ -15,10 +15,10 @@ export const syncInboxes = inngest.createFunction(
   },
   async ({ step }) => {
     await step.run('sync-gmail', async () => {
-      await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/gmail/sync`, { method: 'POST' })
+      await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/gmail/sync`, { method: 'POST', headers: { 'x-internal-secret': process.env.INTERNAL_API_SECRET ?? '' } })
     })
     await step.run('sync-x', async () => {
-      await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/x/sync`, { method: 'POST' })
+      await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/x/sync`, { method: 'POST', headers: { 'x-internal-secret': process.env.INTERNAL_API_SECRET ?? '' } })
     })
   }
 )
@@ -151,7 +151,12 @@ export const publishPost = inngest.createFunction(
     retries: 2,
   },
   async ({ event, step }) => {
-    const { postId } = event.data as { postId: string; scheduledAt: string }
+    const { postId, scheduledAt } = event.data as { postId: string; scheduledAt: string }
+
+    // Wait until the scheduled publish time — without this, posts publish immediately
+    if (scheduledAt && new Date(scheduledAt).getTime() > Date.now()) {
+      await step.sleepUntil('wait-for-scheduled-time', new Date(scheduledAt))
+    }
 
     const post = await step.run('fetch-post', async () => {
       const { data, error } = await adminSupabase

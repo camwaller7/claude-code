@@ -22,8 +22,8 @@ export async function GET(request: NextRequest) {
   }
 
   const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/x/callback`
-  const clientId = process.env.X_API_KEY!
-  const clientSecret = process.env.X_API_SECRET!
+  const clientId = process.env.X_CLIENT_ID!
+  const clientSecret = process.env.X_CLIENT_SECRET!
 
   // Exchange code for token using Basic auth
   const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')

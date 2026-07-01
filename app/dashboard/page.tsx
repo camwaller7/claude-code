@@ -17,7 +17,7 @@ export default async function DashboardPage() {
     { data: allPosts },
     { data: recentMessages },
   ] = await Promise.all([
-    supabase.from('deals').select('deal_value, created_at'),
+    supabase.from('deals').select('deal_value, created_at').eq('status', 'paid'),
     supabase.from('deals').select('deal_value, status').in('status', ['inquiry', 'negotiating', 'contracted', 'delivered']),
     supabase.from('deals').select('status, deal_value, created_at'),
     supabase.from('conversations').select('category, status, last_message_at, created_at'),

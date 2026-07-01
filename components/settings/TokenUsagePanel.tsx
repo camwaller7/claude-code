@@ -26,7 +26,7 @@ export function TokenUsagePanel() {
   useEffect(() => {
     fetch('/api/settings/token-usage')
       .then(r => r.json())
-      .then(setUsage)
+      .then(data => { if (data && data.today && data.byFeature) setUsage(data) })
       .catch(console.error)
   }, [])
 

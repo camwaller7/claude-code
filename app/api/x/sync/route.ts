@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { adminSupabase } from '@/lib/supabase/admin'
+import { requireApiAuth } from '@/lib/auth/requireApiAuth'
 import { triageMessage } from '@/lib/anthropic/triage'
 import { getValidToken } from '@/lib/platform/tokens'
 
@@ -16,7 +17,10 @@ interface DmEventsResponse {
   data?: DmEvent[]
 }
 
-export async function POST() {
+export async function POST(request: Request) {
+  const unauthorized = await requireApiAuth(request)
+  if (unauthorized) return unauthorized
+
   try {
     const token = await getValidToken('x')
 

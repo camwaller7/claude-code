@@ -3,19 +3,20 @@ export const dynamic = 'force-dynamic'
 import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { LoginForm } from '@/components/auth/LoginForm'
+import { AuthHashHandler } from '@/components/auth/AuthHashHandler'
 
 type Props = { searchParams: Promise<{ error?: string }> }
 
 export default async function LoginPage({ searchParams }: Props) {
-  console.log('[login] SUPABASE_URL set:', !!process.env.NEXT_PUBLIC_SUPABASE_URL)
-  console.log('[login] SUPABASE_ANON_KEY set:', !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+  let hasSession = false
   try {
     const supabase = await createServerClient()
     const { data: { session } } = await supabase.auth.getSession()
-    if (session) redirect('/dashboard')
+    hasSession = !!session
   } catch (e) {
     console.error('[login] supabase error:', e)
   }
+  if (hasSession) redirect('/dashboard')
 
   const { error } = await searchParams
 
@@ -28,6 +29,7 @@ export default async function LoginPage({ searchParams }: Props) {
             Your unified inbox, CRM, and post portal — all in one place.
           </p>
         </div>
+        <AuthHashHandler />
         {error === 'auth' && (
           <p className="text-sm text-destructive text-center">Sign-in failed. Please try again.</p>
         )}
