@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { createServerClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/auth/requireAuth'
 import { DashboardClient } from '@/components/dashboard/DashboardClient'
+import { WelcomeFlow } from '@/components/onboarding/WelcomeFlow'
 
 export default async function DashboardPage() {
   await requireAuth()
@@ -27,6 +28,8 @@ export default async function DashboardPage() {
   ])
 
   return (
+    <>
+    <WelcomeFlow />
     <DashboardClient
       paidDeals={paidDeals ?? []}
       pipelineDeals={pipelineDeals ?? []}
@@ -36,5 +39,6 @@ export default async function DashboardPage() {
       allPosts={allPosts ?? []}
       recentMessages={recentMessages ?? []}
     />
+    </>
   )
 }

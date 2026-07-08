@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
+import confetti from 'canvas-confetti'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { Deal, DealStatus } from '@/types'
@@ -14,15 +16,30 @@ export function DealCard({ deal }: { deal: Deal }) {
   const [saving, setSaving] = useState(false)
 
   async function updateStatus(newStatus: DealStatus) {
+    const prev = status
     setStatus(newStatus)
     setSaving(true)
     try {
-      await fetch(`/api/deals/${deal.id}`, {
+      const res = await fetch(`/api/deals/${deal.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
       })
+      if (!res.ok) {
+        setStatus(prev)
+        toast.error('Could not update deal — try again')
+        return
+      }
+      if (newStatus === 'paid') {
+        confetti({ particleCount: 120, spread: 75, origin: { y: 0.7 } })
+        toast.success(`${deal.brand_name} paid! 🎉`)
+      } else {
+        toast.success(`Moved to ${newStatus}`)
+      }
       router.refresh()
+    } catch {
+      setStatus(prev)
+      toast.error('Could not update deal — check your connection')
     } finally {
       setSaving(false)
     }

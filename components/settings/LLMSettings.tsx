@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { MODELS, getModelsByProvider } from '@/lib/llm/models'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
@@ -37,6 +38,7 @@ export function LLMSettings({ initialProvider, initialModel }: { initialProvider
     })
     setSaving(false)
     setSaved(true)
+    toast.success('Model updated')
   }
 
   const selectedModel = MODELS.find(m => m.id === model)

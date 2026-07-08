@@ -1,0 +1,17 @@
+{
+  "name": "Influencer PA",
+  "short_name": "Creator PA",
+  "description": "Your personal assistant for brand deals, DMs and content scheduling",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#09090b",
+  "theme_color": "#8b5cf6",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

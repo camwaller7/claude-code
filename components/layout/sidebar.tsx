@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Inbox, Briefcase, Users, BarChart2, Send, Settings, Settings2 } from 'lucide-react'
@@ -16,6 +17,14 @@ const navItems = [
 
 export function Sidebar({ collapsed }: { collapsed?: boolean }) {
   const pathname = usePathname()
+  const [unread, setUnread] = useState(0)
+
+  useEffect(() => {
+    fetch('/api/conversations?status=needs_reply')
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setUnread(data.length) })
+      .catch(() => {})
+  }, [pathname])
 
   return (
     <aside className={cn(
@@ -43,7 +52,15 @@ export function Sidebar({ collapsed }: { collapsed?: boolean }) {
             )}
           >
             <Icon className="h-4 w-4 shrink-0" />
-            {!collapsed && label}
+            {!collapsed && <span className="flex-1">{label}</span>}
+            {href === '/inbox' && unread > 0 && (
+              <span className={cn(
+                'flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white',
+                collapsed && 'absolute translate-x-2 -translate-y-2 h-4 min-w-4'
+              )}>
+                {unread > 99 ? '99+' : unread}
+              </span>
+            )}
           </Link>
         ))}
       </nav>

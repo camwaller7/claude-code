@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
@@ -37,6 +38,7 @@ export function AssistantSettings({ initialName, initialEmoji, initialVibe }: Pr
     })
     setSaving(false)
     setSaved(true)
+    toast.success('Assistant saved')
   }
 
   return (
