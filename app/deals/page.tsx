@@ -32,7 +32,7 @@ export default async function DealsPage() {
         </div>
         <NewDealDialog />
       </div>
-      <div className="grid grid-cols-3 gap-4 xl:grid-cols-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {DEAL_STATUSES.map((status) => {
           const statusDeals = byStatus(status)
           return (

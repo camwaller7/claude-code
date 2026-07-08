@@ -9,7 +9,6 @@ const PLATFORMS: { value: Platform | 'all'; label: string }[] = [
   { value: 'facebook', label: 'Facebook' },
   { value: 'x', label: 'X' },
   { value: 'gmail', label: 'Gmail' },
-  { value: 'threads', label: 'Threads' },
 ]
 
 const CATEGORIES: { value: MessageCategory | 'all'; label: string }[] = [

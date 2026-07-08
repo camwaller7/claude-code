@@ -48,9 +48,9 @@ export function DealCard({ deal }: { deal: Deal }) {
   return (
     <Card className="text-sm">
       <CardHeader className="p-3 pb-1">
-        <CardTitle className="text-sm">{deal.brand_name}</CardTitle>
+        <CardTitle className="text-sm truncate">{deal.brand_name}</CardTitle>
         {deal.contact_name && (
-          <p className="text-xs text-muted-foreground">{deal.contact_name}</p>
+          <p className="text-xs text-muted-foreground truncate">{deal.contact_name}</p>
         )}
       </CardHeader>
       <CardContent className="p-3 pt-0 flex flex-col gap-2">

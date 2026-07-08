@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
@@ -43,7 +44,7 @@ export function ConversationActions({ conversation }: Props) {
     e.preventDefault()
     setDealLoading(true)
     try {
-      await fetch('/api/deals', {
+      const res = await fetch('/api/deals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -55,6 +56,11 @@ export function ConversationActions({ conversation }: Props) {
           conversation_id: conversation.id,
         }),
       })
+      if (!res.ok) {
+        toast.error('Could not create deal — try again')
+        return
+      }
+      toast.success('Deal created from conversation')
       setDealOpen(false)
       router.push('/deals')
     } finally {
@@ -66,7 +72,7 @@ export function ConversationActions({ conversation }: Props) {
     e.preventDefault()
     setClientLoading(true)
     try {
-      await fetch('/api/clients', {
+      const res = await fetch('/api/clients', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -77,6 +83,11 @@ export function ConversationActions({ conversation }: Props) {
           conversation_id: conversation.id,
         }),
       })
+      if (!res.ok) {
+        toast.error('Could not add client — try again')
+        return
+      }
+      toast.success('Client added from conversation')
       setClientOpen(false)
       router.push('/clients')
     } finally {

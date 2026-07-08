@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -82,7 +83,7 @@ export function NewPostDialog() {
     if (!caption.trim()) return
     setLoading(true)
     try {
-      await fetch('/api/posts', {
+      const res = await fetch('/api/posts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -93,6 +94,11 @@ export function NewPostDialog() {
           scheduled_at: scheduledAt || null,
         }),
       })
+      if (!res.ok) {
+        toast.error('Could not save post — try again')
+        return
+      }
+      toast.success(scheduledAt ? 'Post scheduled 🗓️' : 'Post saved')
       handleClose(false)
       router.refresh()
     } finally {

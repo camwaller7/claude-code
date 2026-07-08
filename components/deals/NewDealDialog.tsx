@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -34,7 +35,7 @@ export function NewDealDialog() {
     if (!form.brand_name.trim()) return
     setLoading(true)
     try {
-      await fetch('/api/deals', {
+      const res = await fetch('/api/deals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -46,6 +47,11 @@ export function NewDealDialog() {
           notes: form.notes || null,
         }),
       })
+      if (!res.ok) {
+        toast.error('Could not create deal — try again')
+        return
+      }
+      toast.success('Deal added')
       setOpen(false)
       setForm({ brand_name: '', contact_name: '', deal_value: '', currency: 'USD', status: 'inquiry', notes: '' })
       router.refresh()

@@ -38,9 +38,9 @@ export default async function ConversationPage({ params }: Props) {
   return (
     <div className="flex flex-col gap-4 max-w-3xl mx-auto">
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold">{conv.contact_name}</h1>
-          <p className="text-sm text-muted-foreground">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold truncate">{conv.contact_name}</h1>
+          <p className="text-sm text-muted-foreground truncate">
             {conv.contact_handle} · {conv.platform}
           </p>
           <div className="mt-1 flex gap-2">

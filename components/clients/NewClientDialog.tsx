@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -29,7 +30,7 @@ export function NewClientDialog() {
     if (!form.name.trim()) return
     setLoading(true)
     try {
-      await fetch('/api/clients', {
+      const res = await fetch('/api/clients', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -40,6 +41,11 @@ export function NewClientDialog() {
           notes: form.notes || null,
         }),
       })
+      if (!res.ok) {
+        toast.error('Could not add client — try again')
+        return
+      }
+      toast.success('Client added')
       setOpen(false)
       setForm({ name: '', handle: '', product_purchased: '', purchase_date: '', notes: '' })
       router.refresh()
