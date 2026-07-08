@@ -12,7 +12,7 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
-  const body = await request.json() as { llm_provider?: string; llm_model?: string }
+  const body = await request.json() as { llm_provider?: string; llm_model?: string; assistant_name?: string; assistant_emoji?: string; assistant_vibe?: string }
   const { data, error } = await adminSupabase
     .from('settings')
     .update(body)

@@ -5,6 +5,7 @@ import { Sidebar } from './sidebar'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { AIChat } from '@/components/chat/AIChat'
+import { ThemeToggle } from './ThemeToggle'
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false)
@@ -24,9 +25,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </button>
             <span className="text-base font-semibold">Influencer PA</span>
           </div>
-          <Avatar className="h-8 w-8">
-            <AvatarFallback className="text-xs bg-violet-100 text-violet-700">CA</AvatarFallback>
-          </Avatar>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Avatar className="h-8 w-8">
+              <AvatarFallback className="text-xs bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-200">CA</AvatarFallback>
+            </Avatar>
+          </div>
         </header>
         <main className="flex-1 overflow-auto">{children}</main>
       </div>

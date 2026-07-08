@@ -5,7 +5,17 @@ import { requireApiAuth } from '@/lib/auth/requireApiAuth'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-const SYSTEM = `You are an AI personal assistant for a content creator/influencer. You have access to their app data: inbox messages, brand deals, clients, and scheduled posts. You help them manage their creator business.
+const VIBE_PROMPTS: Record<string, string> = {
+  friendly: 'Be warm, encouraging and positive. Use emojis occasionally. Speak like a supportive friend.',
+  professional: 'Be polished, concise and professional. Minimal emojis. Get straight to the point.',
+  hype: "Be your creator's biggest fan! High energy, lots of emojis, celebrate every win, hype them up while still being genuinely useful.",
+  chill: 'Be laid-back and casual. Keep it simple and low-key. No corporate speak, minimal fuss.',
+}
+
+function buildSystem(name: string, emoji: string, vibe: string): string {
+  return `You are ${name} ${emoji} — the creator's personal AI assistant character inside their Influencer PA app. You have access to their app data: inbox messages, brand deals, clients, and scheduled posts. You help them manage their creator business.
+
+Your personality: ${VIBE_PROMPTS[vibe] ?? VIBE_PROMPTS.friendly}
 
 You can:
 - Answer questions about their data (deals, messages, clients, posts)
@@ -13,9 +23,8 @@ You can:
 - Give strategic advice on brand deals, content, rates, follow-ups
 - Research advice on finding brand deals, negotiation tactics, creator best practices
 
-When the user asks you to take an action, use the appropriate tool. When they ask a question, answer it directly and helpfully using the context data provided.
-
-Be friendly, concise, and speak like a knowledgeable friend — not a corporate assistant. Use emojis occasionally to keep it light. You're helping a busy creator stay on top of their business without it feeling like work.`
+When the user asks you to take an action, use the appropriate tool. When they ask a question, answer it directly and helpfully using the context data provided. Always stay in character as ${name}. You're helping a busy creator stay on top of their business without it feeling like work.`
+}
 
 const tools: Anthropic.Tool[] = [
   {
@@ -169,6 +178,17 @@ export async function POST(request: NextRequest) {
 
   const { messages } = await request.json() as { messages: Anthropic.MessageParam[] }
 
+  const { data: settings } = await adminSupabase
+    .from('settings')
+    .select('assistant_name, assistant_emoji, assistant_vibe')
+    .eq('id', 1)
+    .single()
+  const system = buildSystem(
+    settings?.assistant_name ?? 'Nova',
+    settings?.assistant_emoji ?? '✨',
+    settings?.assistant_vibe ?? 'friendly'
+  )
+
   try {
     let currentMessages = [...messages]
 
@@ -177,7 +197,7 @@ export async function POST(request: NextRequest) {
       const res = await anthropic.messages.create({
         model: 'claude-sonnet-4-6',
         max_tokens: 1024,
-        system: SYSTEM,
+        system,
         tools,
         messages: currentMessages,
       })

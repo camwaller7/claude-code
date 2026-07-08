@@ -16,23 +16,38 @@ const SUGGESTIONS = [
   "Which clients are most active? 👥",
 ]
 
+interface Persona {
+  assistant_name: string
+  assistant_emoji: string
+}
+
 export function AIChat() {
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [persona, setPersona] = useState<Persona>({ assistant_name: 'Nova', assistant_emoji: '✨' })
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    fetch('/api/settings')
+      .then(r => r.json())
+      .then(data => {
+        if (data?.assistant_name) setPersona({ assistant_name: data.assistant_name, assistant_emoji: data.assistant_emoji ?? '✨' })
+      })
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (open && messages.length === 0) {
       setMessages([{
         role: 'assistant',
-        content: "Hey! 👋 I'm your AI assistant. I can check your deals, draft replies, update your pipeline, find brand opportunities — just ask me anything about your creator business!",
+        content: `Hey! ${persona.assistant_emoji} I'm ${persona.assistant_name}, your personal assistant. I can check your deals, draft replies, update your pipeline, find brand opportunities — just ask me anything about your creator business!`,
       }])
     }
     if (open) setTimeout(() => inputRef.current?.focus(), 100)
-  }, [open])
+  }, [open, persona])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -76,7 +91,7 @@ export function AIChat() {
         )}
         aria-label="Open AI assistant"
       >
-        {open ? <X className="h-5 w-5" /> : <Sparkles className="h-5 w-5" />}
+        {open ? <X className="h-5 w-5" /> : <span className="text-xl">{persona.assistant_emoji}</span>}
       </button>
 
       {/* Chat panel */}
@@ -84,11 +99,11 @@ export function AIChat() {
         <div className="fixed bottom-24 right-6 z-50 flex w-[360px] max-w-[calc(100vw-2rem)] flex-col rounded-2xl border bg-background shadow-2xl" style={{ height: 520 }}>
           {/* Header */}
           <div className="flex items-center gap-3 rounded-t-2xl bg-gradient-to-r from-violet-500 to-purple-600 px-4 py-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20">
-              <Sparkles className="h-4 w-4 text-white" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-base">
+              {persona.assistant_emoji}
             </div>
             <div>
-              <p className="text-sm font-semibold text-white">AI Assistant</p>
+              <p className="text-sm font-semibold text-white">{persona.assistant_name}</p>
               <p className="text-xs text-white/70">Your creator co-pilot</p>
             </div>
           </div>

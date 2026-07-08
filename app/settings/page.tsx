@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { requireAuth } from '@/lib/auth/requireAuth'
 import { adminSupabase } from '@/lib/supabase/admin'
 import { LLMSettings } from '@/components/settings/LLMSettings'
+import { AssistantSettings } from '@/components/settings/AssistantSettings'
 import { TokenUsagePanel } from '@/components/settings/TokenUsagePanel'
 
 export default async function SettingsPage() {
