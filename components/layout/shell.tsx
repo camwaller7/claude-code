@@ -2,10 +2,10 @@
 
 import { useState } from 'react'
 import { Sidebar } from './sidebar'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { AIChat } from '@/components/chat/AIChat'
 import { ThemeToggle } from './ThemeToggle'
+import { UserMenu } from './UserMenu'
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false)
@@ -27,9 +27,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <Avatar className="h-8 w-8">
-              <AvatarFallback className="text-xs bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-200">CA</AvatarFallback>
-            </Avatar>
+            <UserMenu />
           </div>
         </header>
         <main className="flex-1 overflow-auto">{children}</main>
