@@ -9,11 +9,11 @@ import { Suspense } from 'react'
 import type { Conversation } from '@/types'
 
 interface Props {
-  searchParams: Promise<{ platform?: string; category?: string }>
+  searchParams: Promise<{ platform?: string; category?: string; q?: string; status?: string }>
 }
 
 export default async function InboxPage({ searchParams }: Props) {
-  const { platform, category } = await searchParams
+  const { platform, category, q, status } = await searchParams
   await requireAuth()
   const supabase = await createServerClient()
 
@@ -24,6 +24,11 @@ export default async function InboxPage({ searchParams }: Props) {
 
   if (platform) query = query.eq('platform', platform)
   if (category) query = query.eq('category', category)
+  if (status) query = query.eq('status', status)
+  if (q) {
+    const term = q.replace(/[%_]/g, '')
+    query = query.or(`contact_name.ilike.%${term}%,contact_handle.ilike.%${term}%`)
+  }
 
   const { data: conversations } = await query
 
@@ -38,8 +43,9 @@ export default async function InboxPage({ searchParams }: Props) {
         <InboxFilters />
       </Suspense>
       {!conversations || conversations.length === 0 ? (
-        <div className="flex h-64 items-center justify-center rounded-lg border border-dashed">
-          <p className="text-muted-foreground">No conversations yet</p>
+        <div className="flex h-64 flex-col items-center justify-center gap-1 rounded-lg border border-dashed">
+          <p className="text-muted-foreground">{q ? `No results for “${q}”` : 'No conversations yet'}</p>
+          {q && <p className="text-xs text-muted-foreground">Try a different name or handle</p>}
         </div>
       ) : (
         <ConversationList conversations={conversations as Conversation[]} />

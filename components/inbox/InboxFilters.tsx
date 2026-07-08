@@ -1,5 +1,7 @@
 'use client'
 
+import { useEffect, useRef, useState } from 'react'
+import { Search, X } from 'lucide-react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import type { Platform, MessageCategory } from '@/types'
 
@@ -27,6 +29,18 @@ export function InboxFilters() {
 
   const platform = searchParams.get('platform') ?? 'all'
   const category = searchParams.get('category') ?? 'all'
+  const status = searchParams.get('status') ?? 'all'
+  const q = searchParams.get('q') ?? ''
+  const [search, setSearch] = useState(q)
+  const debounce = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => setSearch(q), [q])
+
+  function onSearchChange(value: string) {
+    setSearch(value)
+    if (debounce.current) clearTimeout(debounce.current)
+    debounce.current = setTimeout(() => setFilter('q', value.trim() || 'all'), 300)
+  }
 
   function setFilter(key: string, value: string) {
     const params = new URLSearchParams(searchParams.toString())
@@ -40,6 +54,34 @@ export function InboxFilters() {
 
   return (
     <div className="flex flex-col gap-3 mb-4">
+      {/* Search */}
+      <div className="flex items-center gap-2 rounded-xl border bg-background px-3 py-2 max-w-md">
+        <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+        <input
+          value={search}
+          onChange={e => onSearchChange(e.target.value)}
+          placeholder="Search by name or handle…"
+          className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+        />
+        {search && (
+          <button onClick={() => onSearchChange('')} aria-label="Clear search">
+            <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+          </button>
+        )}
+      </div>
+      {/* Needs-reply quick filter */}
+      <div className="flex flex-wrap gap-1.5">
+        <button
+          onClick={() => setFilter('status', status === 'needs_reply' ? 'all' : 'needs_reply')}
+          className={`rounded-full border px-3 py-0.5 text-xs font-medium transition-colors ${
+            status === 'needs_reply'
+              ? 'border-red-500 bg-red-500 text-white'
+              : 'border-input bg-background text-foreground hover:bg-accent'
+          }`}
+        >
+          Needs reply
+        </button>
+      </div>
       <div className="flex flex-wrap gap-1.5">
         {PLATFORMS.map(({ value, label }) => (
           <button
