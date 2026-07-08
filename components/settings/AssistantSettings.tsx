@@ -48,7 +48,7 @@ export function AssistantSettings({ initialName, initialEmoji, initialVibe }: Pr
       </CardHeader>
       <CardContent className="flex flex-col gap-5">
         {/* Preview */}
-        <div className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-violet-500 to-purple-600 p-4">
+        <div className="flex items-center gap-3 rounded-2xl brand-gradient p-4">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20 text-2xl">
             {emoji}
           </div>

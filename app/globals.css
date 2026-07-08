@@ -79,3 +79,83 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+
+/* ─── Brand themes (data-brand on <html>) ─────────────────────────── */
+/* Gradient + accent tokens; default = Playground (violet candy) */
+:root {
+  --brand-grad-from: #a855f7;
+  --brand-grad-to: #7c3aed;
+  --brand-accent: #8b5cf6;
+}
+
+/* Soft Studio — warm paper, ink, sage & terracotta */
+[data-brand="studio"] {
+  --background: #f7f2ec;
+  --foreground: #2e2621;
+  --card: #fffdf9;
+  --card-foreground: #2e2621;
+  --popover: #fffdf9;
+  --popover-foreground: #2e2621;
+  --primary: #3f5c50;
+  --primary-foreground: #f7f2ec;
+  --secondary: #efe7db;
+  --secondary-foreground: #2e2621;
+  --muted: #efe7db;
+  --muted-foreground: #7d746a;
+  --accent: #efe7db;
+  --accent-foreground: #2e2621;
+  --border: #e9dfd2;
+  --input: #e9dfd2;
+  --ring: #3f5c50;
+  --brand-grad-from: #3f5c50;
+  --brand-grad-to: #2c443b;
+  --brand-accent: #b0713f;
+}
+[data-brand="studio"].dark, .dark[data-brand="studio"] {
+  --background: #201c18;
+  --foreground: #efe7db;
+  --card: #292420;
+  --card-foreground: #efe7db;
+  --popover: #292420;
+  --popover-foreground: #efe7db;
+  --primary: #8aab9c;
+  --primary-foreground: #201c18;
+  --secondary: #332d27;
+  --secondary-foreground: #efe7db;
+  --muted: #332d27;
+  --muted-foreground: #a89d90;
+  --accent: #332d27;
+  --accent-foreground: #efe7db;
+  --border: #3b342d;
+  --input: #3b342d;
+  --ring: #8aab9c;
+}
+
+/* Command — dark instrument panel, mono numbers, signal green */
+[data-brand="command"] {
+  --background: #0c0f14;
+  --foreground: #dfe6ee;
+  --card: #12161d;
+  --card-foreground: #dfe6ee;
+  --popover: #12161d;
+  --popover-foreground: #dfe6ee;
+  --primary: #4ade80;
+  --primary-foreground: #0c0f14;
+  --secondary: #1a2029;
+  --secondary-foreground: #dfe6ee;
+  --muted: #1a2029;
+  --muted-foreground: #5b6676;
+  --accent: #1a2029;
+  --accent-foreground: #dfe6ee;
+  --border: #1d232c;
+  --input: #1d232c;
+  --ring: #4ade80;
+  --brand-grad-from: #16a34a;
+  --brand-grad-to: #15803d;
+  --brand-accent: #4ade80;
+}
+
+.brand-gradient {
+  background-image: linear-gradient(135deg, var(--brand-grad-from), var(--brand-grad-to));
+}

@@ -4,6 +4,7 @@ import './globals.css'
 import { AuthHashHandler } from '@/components/auth/AuthHashHandler'
 import { ThemeProvider } from '@/components/layout/ThemeProvider'
 import { Toaster } from 'sonner'
+import { BrandThemeProvider } from '@/components/layout/BrandThemeProvider'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -23,6 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <ThemeProvider>
+          <BrandThemeProvider />
           <AuthHashHandler />
           {children}
           <Toaster richColors position="top-center" />

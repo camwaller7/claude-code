@@ -110,7 +110,7 @@ export function AIChat() {
         onClick={() => setOpen(o => !o)}
         className={cn(
           'fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-all duration-200',
-          'bg-gradient-to-br from-violet-500 to-purple-600 text-white hover:scale-105 active:scale-95'
+          'brand-gradient text-white hover:scale-105 active:scale-95'
         )}
         aria-label="Open AI assistant"
       >
@@ -121,7 +121,7 @@ export function AIChat() {
       {open && (
         <div className="fixed bottom-24 right-6 z-50 flex w-[360px] max-w-[calc(100vw-2rem)] flex-col rounded-2xl border bg-background shadow-2xl" style={{ height: 520 }}>
           {/* Header */}
-          <div className="flex items-center gap-3 rounded-t-2xl bg-gradient-to-r from-violet-500 to-purple-600 px-4 py-3">
+          <div className="flex items-center gap-3 rounded-t-2xl brand-gradient px-4 py-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-base">
               {persona.assistant_emoji}
             </div>
@@ -138,7 +138,7 @@ export function AIChat() {
                 <div className={cn(
                   'max-w-[85%] rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap break-words',
                   m.role === 'user'
-                    ? 'bg-gradient-to-br from-violet-500 to-purple-600 text-white rounded-br-sm'
+                    ? 'brand-gradient text-white rounded-br-sm'
                     : 'bg-muted text-foreground rounded-bl-sm'
                 )}>
                   {m.content}
@@ -189,7 +189,7 @@ export function AIChat() {
               <button
                 type="submit"
                 disabled={!input.trim() || loading}
-                className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500 text-white disabled:opacity-40 transition-opacity"
+                className="flex h-7 w-7 items-center justify-center rounded-lg brand-gradient text-white disabled:opacity-40 transition-opacity"
               >
                 <Send className="h-3.5 w-3.5" />
               </button>

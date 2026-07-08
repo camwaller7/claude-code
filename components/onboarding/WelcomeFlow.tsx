@@ -42,7 +42,7 @@ export function WelcomeFlow() {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-sm rounded-3xl bg-background p-6 text-center shadow-2xl flex flex-col items-center gap-4">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-purple-600 text-3xl">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full brand-gradient text-3xl">
           {s.emoji}
         </div>
         <h2 className="text-xl font-bold">{s.title}</h2>
@@ -57,7 +57,7 @@ export function WelcomeFlow() {
         <div className="flex w-full flex-col gap-2">
           {last ? (
             <>
-              <Button onClick={finish} className="w-full bg-gradient-to-r from-violet-500 to-purple-600 text-white">
+              <Button onClick={finish} className="w-full brand-gradient text-white">
                 Let&apos;s go 🎉
               </Button>
               <Link
