@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { adminSupabase } from '@/lib/supabase/admin'
 import { requireApiAuth } from '@/lib/auth/requireApiAuth'
+import { getContentAnalytics } from '@/lib/analytics/stats'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -22,6 +23,8 @@ You can:
 - Search messages by content ("what did Priya say about the budget?")
 - Report on deals, clients, posts and overall business stats
 - Take actions: update deal status, create deals, draft replies
+- Analyze their content performance: follower growth, views, interactions, engagement rates, top/worst posts, what formats and posting times work best (get_content_analytics)
+- COACH THEM ON GROWTH: when asked about growing their profile or what to post, pull the analytics first, identify what's actually working (formats, topics, timing, platforms) and what isn't, and give specific data-backed recommendations — not generic tips
 - Give strategic advice on brand deals, rates, follow-ups, and finding new brand partnerships
 
 When asked about anything in their data, USE A TOOL to look it up rather than guessing. Always stay in character as ${name}. You're helping a busy creator stay on top of their business without it feeling like work.`
@@ -133,6 +136,11 @@ const tools: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'get_content_analytics',
+    description: 'Full social analytics: current followers per platform, net follower change (7d/30d), 30-day follower trend, views and interactions last 7 days, top and worst performing posts, per-post metrics, breakdowns by media format and platform, and best posting hours. USE THIS whenever the creator asks about growth, performance, what content works, or wants content strategy advice.',
+    input_schema: { type: 'object' as const, properties: {} },
+  },
+  {
     name: 'get_business_stats',
     description: 'Get overall business stats: total revenue, pipeline value, win rate, unread count, client counts, post counts.',
     input_schema: { type: 'object' as const, properties: {} },
@@ -239,6 +247,10 @@ async function runTool(name: string, input: Record<string, unknown>): Promise<st
         const { data, error } = await q
         if (error) return `Error: ${error.message}`
         return JSON.stringify(data ?? [])
+      }
+      case 'get_content_analytics': {
+        const analytics = await getContentAnalytics()
+        return JSON.stringify(analytics)
       }
       case 'get_business_stats': {
         const [{ data: deals }, { count: convTotal }, { count: needsReply }, { data: clients }, { data: posts }] = await Promise.all([

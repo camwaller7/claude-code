@@ -4,6 +4,8 @@ import { createServerClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/auth/requireAuth'
 import { DashboardClient } from '@/components/dashboard/DashboardClient'
 import { WelcomeFlow } from '@/components/onboarding/WelcomeFlow'
+import { AudiencePanel } from '@/components/dashboard/AudiencePanel'
+import { getContentAnalytics } from '@/lib/analytics/stats'
 
 export default async function DashboardPage() {
   await requireAuth()
@@ -27,9 +29,16 @@ export default async function DashboardPage() {
     supabase.from('messages').select('created_at, direction').order('created_at', { ascending: false }).limit(200),
   ])
 
+  const analytics = await getContentAnalytics().catch(() => null)
+
   return (
     <>
     <WelcomeFlow />
+    {analytics && (
+      <div className="px-6 pt-6 max-w-6xl mx-auto w-full">
+        <AudiencePanel analytics={analytics} />
+      </div>
+    )}
     <DashboardClient
       paidDeals={paidDeals ?? []}
       pipelineDeals={pipelineDeals ?? []}
