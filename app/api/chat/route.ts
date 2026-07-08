@@ -185,52 +185,63 @@ export async function POST(request: NextRequest) {
     .single()
   const system = buildSystem(
     settings?.assistant_name ?? 'Nova',
-    settings?.assistant_emoji ?? '✨',
+    settings?.assistant_emoji ?? '\u2728',
     settings?.assistant_vibe ?? 'friendly'
   )
 
-  try {
-    let currentMessages = [...messages]
+  const encoder = new TextEncoder()
 
-    // Agentic loop — up to 5 tool call rounds
-    for (let i = 0; i < 5; i++) {
-      const res = await anthropic.messages.create({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1024,
-        system,
-        tools,
-        messages: currentMessages,
-      })
+  const stream = new ReadableStream({
+    async start(controller) {
+      const push = (text: string) => controller.enqueue(encoder.encode(text))
+      try {
+        let currentMessages = [...messages]
 
-      if (res.stop_reason === 'end_turn') {
-        const text = res.content.filter(b => b.type === 'text').map(b => (b as { type: 'text'; text: string }).text).join('')
-        return NextResponse.json({ reply: text })
+        // Agentic loop — up to 5 tool-call rounds, streaming text as it arrives
+        for (let i = 0; i < 5; i++) {
+          const anthropicStream = anthropic.messages.stream({
+            model: 'claude-sonnet-4-6',
+            max_tokens: 1024,
+            system,
+            tools,
+            messages: currentMessages,
+          })
+
+          anthropicStream.on('text', (delta) => push(delta))
+
+          const res = await anthropicStream.finalMessage()
+
+          if (res.stop_reason === 'tool_use') {
+            const toolUses = res.content.filter(b => b.type === 'tool_use') as Anthropic.ToolUseBlock[]
+            const toolResults: Anthropic.ToolResultBlockParam[] = await Promise.all(
+              toolUses.map(async tu => ({
+                type: 'tool_result' as const,
+                tool_use_id: tu.id,
+                content: await runTool(tu.name, tu.input as Record<string, unknown>),
+              }))
+            )
+            currentMessages = [
+              ...currentMessages,
+              { role: 'assistant' as const, content: res.content },
+              { role: 'user' as const, content: toolResults },
+            ]
+            continue
+          }
+          break
+        }
+      } catch (e) {
+        console.error('[chat]', e)
+        push('\n\nSorry, something went wrong. Please try again.')
+      } finally {
+        controller.close()
       }
+    },
+  })
 
-      if (res.stop_reason === 'tool_use') {
-        const toolUses = res.content.filter(b => b.type === 'tool_use') as Anthropic.ToolUseBlock[]
-        const toolResults: Anthropic.ToolResultBlockParam[] = await Promise.all(
-          toolUses.map(async tu => ({
-            type: 'tool_result' as const,
-            tool_use_id: tu.id,
-            content: await runTool(tu.name, tu.input as Record<string, unknown>),
-          }))
-        )
-
-        currentMessages = [
-          ...currentMessages,
-          { role: 'assistant' as const, content: res.content },
-          { role: 'user' as const, content: toolResults },
-        ]
-        continue
-      }
-
-      break
-    }
-
-    return NextResponse.json({ reply: 'Sorry, I ran into an issue. Please try again.' })
-  } catch (e) {
-    console.error('[chat]', e)
-    return NextResponse.json({ reply: 'Something went wrong. Please try again.' }, { status: 500 })
-  }
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Cache-Control': 'no-cache',
+    },
+  })
 }

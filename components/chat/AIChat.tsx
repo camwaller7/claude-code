@@ -71,8 +71,31 @@ export function AIChat() {
           messages: newMessages.map(m => ({ role: m.role, content: m.content })),
         }),
       })
-      const data = await res.json() as { reply: string }
-      setMessages(prev => [...prev, { role: 'assistant', content: data.reply }])
+      if (!res.ok || !res.body) throw new Error('chat failed')
+
+      // Stream the reply in as it's generated
+      setMessages(prev => [...prev, { role: 'assistant', content: '' }])
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let acc = ''
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        acc += decoder.decode(value, { stream: true })
+        const text = acc
+        setMessages(prev => {
+          const next = [...prev]
+          next[next.length - 1] = { role: 'assistant', content: text }
+          return next
+        })
+      }
+      if (!acc.trim()) {
+        setMessages(prev => {
+          const next = [...prev]
+          next[next.length - 1] = { role: 'assistant', content: 'Done! Anything else?' }
+          return next
+        })
+      }
     } catch {
       setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, something went wrong. Try again!' }])
     } finally {
