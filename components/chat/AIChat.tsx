@@ -68,7 +68,9 @@ export function AIChat() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: newMessages.map(m => ({ role: m.role, content: m.content })),
+          messages: newMessages
+            .filter(m => m.content.trim().length > 0)
+            .map(m => ({ role: m.role, content: m.content })),
         }),
       })
       if (!res.ok || !res.body) throw new Error('chat failed')
@@ -97,7 +99,13 @@ export function AIChat() {
         })
       }
     } catch {
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, something went wrong. Try again!' }])
+      setMessages(prev => {
+        // Drop a dangling empty assistant bubble before showing the error
+        const next = prev[prev.length - 1]?.role === 'assistant' && !prev[prev.length - 1].content.trim()
+          ? prev.slice(0, -1)
+          : [...prev]
+        return [...next, { role: 'assistant', content: 'Sorry, something went wrong. Try again!' }]
+      })
     } finally {
       setLoading(false)
     }
