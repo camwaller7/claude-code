@@ -3,6 +3,8 @@ import Anthropic from '@anthropic-ai/sdk'
 import { adminSupabase } from '@/lib/supabase/admin'
 import { requireApiAuth } from '@/lib/auth/requireApiAuth'
 import { getContentAnalytics } from '@/lib/analytics/stats'
+import { getLLMSettings, logTokenUsage } from '@/lib/llm/settings'
+import { llmComplete } from '@/lib/llm/client'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -223,16 +225,16 @@ async function runTool(name: string, input: Record<string, unknown>): Promise<st
         return `Created deal for "${data.brand_name}" with status "${data.status}"`
       }
       case 'draft_reply': {
-        const reply = await anthropic.messages.create({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 300,
-          messages: [{
-            role: 'user',
-            content: `Draft a short, friendly reply for a content creator to send to ${input.contact_name}. Context: ${input.conversation_context}. Keep it natural and warm, 2-4 sentences max. Return ONLY the reply text.`,
-          }],
+        const { provider, model } = await getLLMSettings()
+        const { text, inputTokens, outputTokens } = await llmComplete({
+          provider,
+          model,
+          system: 'You draft short, friendly replies for a content creator. Return ONLY the reply text, 2-4 sentences max.',
+          prompt: `Draft a reply to ${input.contact_name}. Context: ${input.conversation_context}`,
+          maxTokens: 300,
         })
-        const text = reply.content.filter(b => b.type === 'text').map(b => (b as { type: 'text'; text: string }).text).join('')
-        return `Draft reply:\n\n"${text}"`
+        await logTokenUsage(provider, model, 'draft_reply', inputTokens, outputTokens).catch(() => {})
+        return `Draft reply:\n\n"${text.trim()}"`
       }
       case 'get_clients': {
         let q = adminSupabase.from('clients').select('*').order('created_at', { ascending: false })
@@ -300,10 +302,6 @@ export async function POST(request: NextRequest) {
   const unauthorized = await requireApiAuth(request)
   if (unauthorized) return unauthorized
 
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return NextResponse.json({ error: 'AI is not configured — ANTHROPIC_API_KEY is missing.' }, { status: 500 })
-  }
-
   let messages: Anthropic.MessageParam[]
   try {
     const body = await request.json() as { messages?: Anthropic.MessageParam[] }
@@ -315,16 +313,32 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No message provided' }, { status: 400 })
   }
 
-  const { data: settings } = await adminSupabase
-    .from('settings')
-    .select('assistant_name, assistant_emoji, assistant_vibe')
-    .eq('id', 1)
-    .single()
+  const [{ data: settings }, llm] = await Promise.all([
+    adminSupabase
+      .from('settings')
+      .select('assistant_name, assistant_emoji, assistant_vibe')
+      .eq('id', 1)
+      .single(),
+    getLLMSettings(),
+  ])
   const system = buildSystem(
     settings?.assistant_name ?? 'Nova',
     settings?.assistant_emoji ?? '✨',
     settings?.assistant_vibe ?? 'friendly'
   )
+
+  const keyByProvider: Record<string, string | undefined> = {
+    anthropic: process.env.ANTHROPIC_API_KEY,
+    openai: process.env.OPENAI_API_KEY,
+    google: process.env.GOOGLE_AI_API_KEY,
+    groq: process.env.GROQ_API_KEY,
+  }
+  if (!keyByProvider[llm.provider]) {
+    return NextResponse.json(
+      { error: `The selected AI provider (${llm.provider}) has no API key configured. Add it in Railway variables or pick a different model in Settings.` },
+      { status: 500 }
+    )
+  }
 
   const encoder = new TextEncoder()
 
@@ -332,38 +346,69 @@ export async function POST(request: NextRequest) {
     async start(controller) {
       const push = (text: string) => controller.enqueue(encoder.encode(text))
       try {
-        let currentMessages = [...messages]
+        if (llm.provider === 'anthropic') {
+          // Full agentic tool loop with token-level streaming
+          let currentMessages = [...messages]
+          let inputTokens = 0
+          let outputTokens = 0
 
-        for (let i = 0; i < 6; i++) {
-          const anthropicStream = anthropic.messages.stream({
-            model: 'claude-sonnet-4-6',
-            max_tokens: 1500,
-            system,
-            tools,
-            messages: currentMessages,
-          })
+          for (let i = 0; i < 6; i++) {
+            const anthropicStream = anthropic.messages.stream({
+              model: llm.model,
+              max_tokens: 1500,
+              system,
+              tools,
+              messages: currentMessages,
+            })
 
-          anthropicStream.on('text', (delta) => push(delta))
+            anthropicStream.on('text', (delta) => push(delta))
 
-          const res = await anthropicStream.finalMessage()
+            const res = await anthropicStream.finalMessage()
+            inputTokens += res.usage.input_tokens
+            outputTokens += res.usage.output_tokens
 
-          if (res.stop_reason === 'tool_use') {
-            const toolUses = res.content.filter(b => b.type === 'tool_use') as Anthropic.ToolUseBlock[]
-            const toolResults: Anthropic.ToolResultBlockParam[] = await Promise.all(
-              toolUses.map(async tu => ({
-                type: 'tool_result' as const,
-                tool_use_id: tu.id,
-                content: await runTool(tu.name, tu.input as Record<string, unknown>),
-              }))
-            )
-            currentMessages = [
-              ...currentMessages,
-              { role: 'assistant' as const, content: res.content },
-              { role: 'user' as const, content: toolResults },
-            ]
-            continue
+            if (res.stop_reason === 'tool_use') {
+              const toolUses = res.content.filter(b => b.type === 'tool_use') as Anthropic.ToolUseBlock[]
+              const toolResults: Anthropic.ToolResultBlockParam[] = await Promise.all(
+                toolUses.map(async tu => ({
+                  type: 'tool_result' as const,
+                  tool_use_id: tu.id,
+                  content: await runTool(tu.name, tu.input as Record<string, unknown>),
+                }))
+              )
+              currentMessages = [
+                ...currentMessages,
+                { role: 'assistant' as const, content: res.content },
+                { role: 'user' as const, content: toolResults },
+              ]
+              continue
+            }
+            break
           }
-          break
+          await logTokenUsage('anthropic', llm.model, 'chat', inputTokens, outputTokens).catch(() => {})
+        } else {
+          // Other providers don't run our tool loop — give them a live data
+          // snapshot as context instead, so answers still use real data.
+          const [stats, analytics, convs] = await Promise.all([
+            runTool('get_business_stats', {}),
+            runTool('get_content_analytics', {}),
+            runTool('list_conversations', { limit: 15 }),
+          ])
+          const contextBlock = `LIVE DATA SNAPSHOT (use this to answer):\nBUSINESS STATS: ${stats}\nCONTENT ANALYTICS: ${analytics}\nRECENT CONVERSATIONS: ${convs}`
+
+          const history = messages
+            .map(m => `${m.role === 'user' ? 'Creator' : 'Assistant'}: ${typeof m.content === 'string' ? m.content : ''}`)
+            .join('\n')
+
+          const { text, inputTokens, outputTokens } = await llmComplete({
+            provider: llm.provider,
+            model: llm.model,
+            system: `${system}\n\n${contextBlock}`,
+            prompt: history,
+            maxTokens: 1500,
+          })
+          push(text)
+          await logTokenUsage(llm.provider, llm.model, 'chat', inputTokens, outputTokens).catch(() => {})
         }
       } catch (e) {
         console.error('[chat] stream error:', e)
