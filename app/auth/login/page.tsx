@@ -3,7 +3,6 @@ export const dynamic = 'force-dynamic'
 import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { LoginForm } from '@/components/auth/LoginForm'
-import { AuthHashHandler } from '@/components/auth/AuthHashHandler'
 
 type Props = { searchParams: Promise<{ error?: string }> }
 
@@ -29,7 +28,6 @@ export default async function LoginPage({ searchParams }: Props) {
             Your unified inbox, CRM, and post portal — all in one place.
           </p>
         </div>
-        <AuthHashHandler />
         {error === 'auth' && (
           <p className="text-sm text-destructive text-center">Sign-in failed. Please try again.</p>
         )}
