@@ -5,6 +5,7 @@ import { requireAuth } from '@/lib/auth/requireAuth'
 import { Badge } from '@/components/ui/badge'
 import { NewPostDialog } from '@/components/post-portal/NewPostDialog'
 import { PublishNowButton } from '@/components/post-portal/PublishNowButton'
+import { formatDate } from '@/lib/utils'
 import type { Post, PostStatus } from '@/types'
 
 function statusVariant(status: PostStatus): 'default' | 'secondary' | 'destructive' | 'outline' {
@@ -49,7 +50,7 @@ export default async function PostPortalPage() {
               <div className="flex items-center gap-3">
                 {post.scheduled_at && (
                   <span className="text-xs text-muted-foreground">
-                    {new Date(post.scheduled_at).toLocaleDateString()}
+                    {formatDate(post.scheduled_at, { withTime: true })}
                   </span>
                 )}
                 <Badge variant={statusVariant(post.status as PostStatus)}>{post.status}</Badge>

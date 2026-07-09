@@ -6,6 +6,7 @@ import { requireAuth } from '@/lib/auth/requireAuth'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { NewClientDialog } from '@/components/clients/NewClientDialog'
+import { formatDate } from '@/lib/utils'
 import type { CreatorClient } from '@/types'
 
 export default async function ClientsPage() {
@@ -42,7 +43,7 @@ export default async function ClientsPage() {
                   )}
                   {client.purchase_date && (
                     <p className="text-xs text-muted-foreground">
-                      {new Date(client.purchase_date).toLocaleDateString()}
+                      {formatDate(client.purchase_date)}
                     </p>
                   )}
                   <div className="mt-2">

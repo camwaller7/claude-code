@@ -5,6 +5,19 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+/**
+ * Spelled-out month, never ambiguous digits — "12/8" reads as Aug 12 to an
+ * American and Dec 8 to almost everyone else. Always renders identically
+ * regardless of server/browser locale.
+ */
+export function formatDate(dateStr: string, opts?: { withTime?: boolean }): string {
+  const d = new Date(dateStr)
+  const date = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  if (!opts?.withTime) return date
+  const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+  return `${date}, ${time}`
+}
+
 export function relativeTime(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime()
   if (diff < 0) {

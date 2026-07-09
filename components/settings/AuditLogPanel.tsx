@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ShieldAlert, ShieldCheck, KeyRound, Settings2, Briefcase, Link2, Bot } from 'lucide-react'
+import { formatDate } from '@/lib/utils'
 
 interface Entry {
   id: string
@@ -72,7 +73,7 @@ export function AuditLogPanel() {
                   <div className="min-w-0 flex-1">
                     <p className={isWarning ? 'text-red-600 dark:text-red-400' : ''}>{LABELS[e.action] ?? e.action}</p>
                     <p className="text-xs text-muted-foreground truncate">
-                      {e.actor_email ?? 'unknown'} · {new Date(e.created_at).toLocaleString()}
+                      {e.actor_email ?? 'unknown'} · {formatDate(e.created_at, { withTime: true })}
                     </p>
                   </div>
                 </div>

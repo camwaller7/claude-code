@@ -6,8 +6,13 @@ import { requireAuth } from '@/lib/auth/requireAuth'
 import { MessageThread } from '@/components/inbox/MessageThread'
 import { ReplyBox } from '@/components/inbox/ReplyBox'
 import { ClientProfileEditor } from '@/components/clients/ClientProfileEditor'
+import { LinkConversation } from '@/components/clients/LinkConversation'
 import { Badge } from '@/components/ui/badge'
 import type { CreatorClient, Conversation, Message } from '@/types'
+
+function normalizeHandle(handle: string): string {
+  return handle.trim().toLowerCase().replace(/^@/, '')
+}
 
 interface Props {
   params: Promise<{ id: string }>
@@ -25,6 +30,8 @@ export default async function ClientDetailPage({ params }: Props) {
 
   let conversation: Conversation | null = null
   let messages: Message[] = []
+  let suggestedConversations: Conversation[] = []
+
   if (c.conversation_id) {
     const [{ data: conv }, { data: msgs }] = await Promise.all([
       supabase.from('conversations').select('*').eq('id', c.conversation_id).single(),
@@ -32,6 +39,22 @@ export default async function ClientDetailPage({ params }: Props) {
     ])
     conversation = (conv as Conversation) ?? null
     messages = (msgs as Message[]) ?? []
+  } else {
+    // No linked conversation yet — offer to link one automatically. Handles
+    // get stored inconsistently across platforms ("@name" vs "name",
+    // different casing), so match on the normalized form, not an exact
+    // string, and also fall back to matching on contact name.
+    const { data: allConvs } = await supabase
+      .from('conversations')
+      .select('*')
+      .order('last_message_at', { ascending: false })
+      .limit(200)
+    const targetHandle = normalizeHandle(c.handle)
+    const targetName = c.name.trim().toLowerCase()
+    suggestedConversations = ((allConvs as Conversation[]) ?? []).filter(conv =>
+      normalizeHandle(conv.contact_handle) === targetHandle ||
+      conv.contact_name.trim().toLowerCase() === targetName
+    )
   }
 
   const lastInbound = [...messages].reverse().find(m => m.direction === 'inbound')
@@ -65,11 +88,7 @@ export default async function ClientDetailPage({ params }: Props) {
               <ReplyBox conversationId={c.conversation_id} suggestedReply={lastInbound?.ai_draft_reply ?? undefined} />
             </>
           ) : (
-            <div className="flex h-48 items-center justify-center rounded-lg border border-dashed">
-              <p className="text-sm text-muted-foreground">
-                No linked conversation yet — this client wasn&apos;t created from an inbox message.
-              </p>
-            </div>
+            <LinkConversation clientId={c.id} suggestions={suggestedConversations} />
           )}
         </div>
       </div>

@@ -132,8 +132,17 @@ insert into deals (brand_name, contact_name, status, deal_value, currency, notes
 -- CLIENTS (Course / Product Buyers)
 -- ============================================================
 
+-- Emma is linked to her existing Facebook conversation (demo_fb_001) so her
+-- client page shows the real message thread, matching how real client
+-- records get created from an inbound message.
+with c as (
+  select id from conversations where external_thread_id = 'demo_fb_001'
+)
+insert into clients (conversation_id, name, handle, product_purchased, purchase_date, status, notes, created_at)
+select c.id, 'Emma Rodriguez', 'emma.rodriguez.92', 'Content Creator Masterclass', '2026-06-01', 'active', 'Very engaged, asks great questions in community.', now() - interval '22 days'
+from c;
+
 insert into clients (name, handle, product_purchased, purchase_date, status, notes, created_at) values
-  ('Emma Rodriguez',  '@emma.rodriguez', 'Content Creator Masterclass', '2026-06-01', 'active',    'Very engaged, asks great questions in community.',        now() - interval '22 days'),
   ('Tyler Brooks',    '@tylerbrooks',    'Content Creator Masterclass', '2026-06-03', 'active',    'Completed modules 1 and 2 already.',                      now() - interval '20 days'),
   ('Aisha Patel',     '@aishacreates',   'Content Creator Masterclass', '2026-06-05', 'active',    'Runs a food blog. Keen on the Instagram growth module.',   now() - interval '18 days'),
   ('Lucas Fernandez', '@lucas.lens',     '1:1 Coaching Session',        '2026-06-10', 'active',    'Had session last Tuesday. Follow up in 2 weeks.',          now() - interval '13 days'),

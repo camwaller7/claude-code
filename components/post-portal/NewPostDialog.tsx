@@ -202,6 +202,13 @@ export function NewPostDialog() {
               value={scheduledAt}
               onChange={(e) => setScheduledAt(e.target.value)}
             />
+            {scheduledAt && !isNaN(new Date(scheduledAt).getTime()) && (
+              <p className="text-xs text-muted-foreground">
+                Confirms as: {new Date(scheduledAt).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                {' at '}
+                {new Date(scheduledAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+              </p>
+            )}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => handleClose(false)}>

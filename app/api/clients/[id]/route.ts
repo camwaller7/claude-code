@@ -23,7 +23,7 @@ export async function PATCH(
   const allowed = [
     'name', 'handle', 'product_purchased', 'purchase_date', 'status', 'notes',
     'age', 'gender', 'job_title', 'location', 'email', 'phone',
-    'goals', 'preferences', 'important_dates', 'ai_context',
+    'goals', 'preferences', 'important_dates', 'ai_context', 'conversation_id',
   ]
   const update: Record<string, unknown> = {}
   for (const key of allowed) {
