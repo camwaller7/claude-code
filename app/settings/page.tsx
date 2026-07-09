@@ -7,6 +7,7 @@ import { AssistantSettings } from '@/components/settings/AssistantSettings'
 import { LookSettings } from '@/components/settings/LookSettings'
 import { TokenUsagePanel } from '@/components/settings/TokenUsagePanel'
 import { AuditLogPanel } from '@/components/settings/AuditLogPanel'
+import { AccountPanel } from '@/components/settings/AccountPanel'
 
 export default async function SettingsPage() {
   await requireAuth()
@@ -25,6 +26,7 @@ export default async function SettingsPage() {
           Your look, your assistant, your AI model and usage
         </p>
       </div>
+      <AccountPanel />
       <LookSettings initialTheme={settings?.brand_theme ?? 'studio'} />
       <AssistantSettings
         initialName={settings?.assistant_name ?? 'Nova'}
