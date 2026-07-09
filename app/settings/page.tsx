@@ -20,8 +20,16 @@ export default async function SettingsPage() {
     <div className="max-w-3xl mx-auto flex flex-col gap-8">
       <div>
         <h1 className="text-2xl font-bold">Settings</h1>
-        <p className="text-sm text-muted-foreground mt-1">Configure your AI model and view usage</p>
+        <p className="text-sm text-muted-foreground mt-1">
+          Your look, your assistant, your AI model and usage
+        </p>
       </div>
+      <LookSettings initialTheme={settings?.brand_theme ?? 'studio'} />
+      <AssistantSettings
+        initialName={settings?.assistant_name ?? 'Nova'}
+        initialEmoji={settings?.assistant_emoji ?? '✨'}
+        initialVibe={settings?.assistant_vibe ?? 'friendly'}
+      />
       <LLMSettings
         initialProvider={settings?.llm_provider ?? 'anthropic'}
         initialModel={settings?.llm_model ?? 'claude-sonnet-4-6'}

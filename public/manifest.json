@@ -4,8 +4,8 @@
   "description": "Your personal assistant for brand deals, DMs and content scheduling",
   "start_url": "/dashboard",
   "display": "standalone",
-  "background_color": "#09090b",
-  "theme_color": "#8b5cf6",
+  "background_color": "#f7f2ec",
+  "theme_color": "#3f5c50",
   "icons": [
     {
       "src": "/icon.svg",

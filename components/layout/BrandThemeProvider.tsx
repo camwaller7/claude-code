@@ -10,7 +10,7 @@ import { useEffect } from 'react'
 export function BrandThemeProvider() {
   useEffect(() => {
     const cached = localStorage.getItem('brand_theme')
-    if (cached) document.documentElement.dataset.brand = cached
+    document.documentElement.dataset.brand = cached ?? 'studio'
 
     fetch('/api/settings')
       .then(r => r.json())

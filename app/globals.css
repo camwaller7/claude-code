@@ -84,6 +84,12 @@ body {
 /* ─── Brand themes (data-brand on <html>) ─────────────────────────── */
 /* Gradient + accent tokens; default = Playground (violet candy) */
 :root {
+  --brand-grad-from: #3f5c50;
+  --brand-grad-to: #2c443b;
+  --brand-accent: #b0713f;
+}
+
+[data-brand="playground"] {
   --brand-grad-from: #a855f7;
   --brand-grad-to: #7c3aed;
   --brand-accent: #8b5cf6;

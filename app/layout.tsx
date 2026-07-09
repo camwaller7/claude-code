@@ -16,12 +16,12 @@ export const metadata: Metadata = {
 }
 
 export const viewport = {
-  themeColor: '#8b5cf6',
+  themeColor: '#3f5c50',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" data-brand="studio" suppressHydrationWarning>
       <body className={inter.className}>
         <ThemeProvider>
           <BrandThemeProvider />
