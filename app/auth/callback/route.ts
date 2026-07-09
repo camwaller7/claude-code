@@ -28,13 +28,17 @@ export async function GET(request: NextRequest) {
     }
   )
 
+  // A magic link is a verification/recovery step, never a direct dashboard
+  // login — it always routes through set/reset-password, so a working
+  // session can only ever be reached by knowing the password (or by proving
+  // email ownership and immediately choosing a new one).
   if (tokenHash && type) {
     const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: type as 'email' | 'magiclink' })
     if (error) {
       console.error('[auth/callback] verifyOtp error:', error.message)
       return NextResponse.redirect(`${appUrl}/auth/login?error=auth`)
     }
-    return NextResponse.redirect(`${appUrl}/dashboard`)
+    return NextResponse.redirect(`${appUrl}/auth/set-password`)
   }
 
   if (code) {
@@ -43,7 +47,7 @@ export async function GET(request: NextRequest) {
       console.error('[auth/callback] exchange error:', error.message)
       return NextResponse.redirect(`${appUrl}/auth/login?error=auth`)
     }
-    return NextResponse.redirect(`${appUrl}/dashboard`)
+    return NextResponse.redirect(`${appUrl}/auth/set-password`)
   }
 
   return NextResponse.redirect(`${appUrl}/auth/login?error=auth`)

@@ -27,15 +27,18 @@ export function AuthHashHandler() {
       return
     }
 
+    // A magic link only ever verifies email ownership — it always routes
+    // through set/reset-password rather than straight into the app, so a
+    // working session can't be reached without going through a password step.
     supabase.auth
       .setSession({ access_token, refresh_token })
       .then(({ error }) => {
         if (error) {
           console.error('[auth] setSession error:', error.message)
           setStatus('error')
-        } else {
-          window.location.replace('/dashboard')
+          return
         }
+        window.location.replace('/auth/set-password')
       })
       .catch(() => setStatus('error'))
   }, [])

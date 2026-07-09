@@ -7,15 +7,17 @@ import { LoginForm } from '@/components/auth/LoginForm'
 type Props = { searchParams: Promise<{ error?: string }> }
 
 export default async function LoginPage({ searchParams }: Props) {
-  let hasSession = false
+  let redirectTo: string | null = null
   try {
     const supabase = await createServerClient()
-    const { data: { session } } = await supabase.auth.getSession()
-    hasSession = !!session
+    const { data } = await supabase.auth.getUser()
+    if (data.user) {
+      redirectTo = data.user.user_metadata?.has_password === true ? '/dashboard' : '/auth/set-password'
+    }
   } catch (e) {
     console.error('[login] supabase error:', e)
   }
-  if (hasSession) redirect('/dashboard')
+  if (redirectTo) redirect(redirectTo)
 
   const { error } = await searchParams
 
@@ -68,7 +70,7 @@ export default async function LoginPage({ searchParams }: Props) {
         </div>
 
         <p className="text-center text-xs" style={{ color: '#a89d90' }}>
-          No password needed — we&apos;ll email you a secure sign-in link.
+          First time here? Use a sign-in link to verify your email, then set a password.
         </p>
       </div>
     </div>
