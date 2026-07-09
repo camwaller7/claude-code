@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic'
 
+import Link from 'next/link'
 import { createServerClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/auth/requireAuth'
 import { Badge } from '@/components/ui/badge'
@@ -31,25 +32,27 @@ export default async function ClientsPage() {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {(clients as CreatorClient[]).map((client) => (
-            <Card key={client.id}>
-              <CardContent className="p-4">
-                <p className="font-medium text-sm">{client.name}</p>
-                <p className="text-xs text-muted-foreground">{client.handle}</p>
-                {client.product_purchased && (
-                  <p className="mt-1 text-xs text-muted-foreground">{client.product_purchased}</p>
-                )}
-                {client.purchase_date && (
-                  <p className="text-xs text-muted-foreground">
-                    {new Date(client.purchase_date).toLocaleDateString()}
-                  </p>
-                )}
-                <div className="mt-2">
-                  <Badge variant={client.status === 'active' ? 'default' : 'secondary'}>
-                    {client.status}
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
+            <Link key={client.id} href={`/clients/${client.id}`}>
+              <Card className="transition-colors hover:bg-accent cursor-pointer">
+                <CardContent className="p-4">
+                  <p className="font-medium text-sm truncate">{client.name}</p>
+                  <p className="text-xs text-muted-foreground truncate">{client.handle}</p>
+                  {client.product_purchased && (
+                    <p className="mt-1 text-xs text-muted-foreground truncate">{client.product_purchased}</p>
+                  )}
+                  {client.purchase_date && (
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(client.purchase_date).toLocaleDateString()}
+                    </p>
+                  )}
+                  <div className="mt-2">
+                    <Badge variant={client.status === 'active' ? 'default' : 'secondary'}>
+                      {client.status}
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
           ))}
         </div>
       )}

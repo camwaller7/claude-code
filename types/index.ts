@@ -67,6 +67,16 @@ export interface CreatorClient {
   purchase_date: string | null
   status: ClientStatus
   notes: string | null
+  age: number | null
+  gender: string | null
+  job_title: string | null
+  location: string | null
+  email: string | null
+  phone: string | null
+  goals: string | null
+  preferences: string | null
+  important_dates: string | null
+  ai_context: string | null
   created_at: string
 }
 
