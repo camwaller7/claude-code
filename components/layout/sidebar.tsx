@@ -7,10 +7,10 @@ import { Inbox, Briefcase, Users, BarChart2, Send, Settings, Settings2 } from 'l
 import { cn } from '@/lib/utils'
 
 const navItems = [
+  { href: '/dashboard', label: 'Dashboard', icon: BarChart2 },
   { href: '/inbox', label: 'Inbox', icon: Inbox },
   { href: '/deals', label: 'Deals', icon: Briefcase },
   { href: '/clients', label: 'Clients', icon: Users },
-  { href: '/dashboard', label: 'Dashboard', icon: BarChart2 },
   { href: '/post-portal', label: 'Post Portal', icon: Send },
   { href: '/settings', label: 'Settings', icon: Settings2 },
 ]
@@ -27,10 +27,13 @@ export function Sidebar({ collapsed }: { collapsed?: boolean }) {
   }, [pathname])
 
   return (
-    <aside className={cn(
-      'flex h-screen flex-col border-r bg-background transition-all duration-200 shrink-0',
-      collapsed ? 'w-14' : 'w-56'
-    )}>
+    <aside
+      className={cn(
+        'flex h-screen flex-col border-r transition-all duration-200 shrink-0',
+        collapsed ? 'w-14' : 'w-56'
+      )}
+      style={{ background: 'var(--sidebar-bg)' }}
+    >
       {!collapsed && (
         <div className="flex h-14 items-center border-b px-4">
           <span className="text-sm font-semibold text-muted-foreground">Navigation</span>

@@ -87,12 +87,21 @@ body {
   --brand-grad-from: #3f5c50;
   --brand-grad-to: #2c443b;
   --brand-accent: #b0713f;
+  --sidebar-bg: #efe7db;
+}
+
+.dark {
+  --sidebar-bg: #17140f;
 }
 
 [data-brand="playground"] {
   --brand-grad-from: #a855f7;
   --brand-grad-to: #7c3aed;
   --brand-accent: #8b5cf6;
+  --sidebar-bg: #f1e9f9;
+}
+[data-brand="playground"].dark, .dark[data-brand="playground"] {
+  --sidebar-bg: #150f1e;
 }
 
 /* Soft Studio — warm paper, ink, sage & terracotta */
@@ -117,6 +126,7 @@ body {
   --brand-grad-from: #3f5c50;
   --brand-grad-to: #2c443b;
   --brand-accent: #b0713f;
+  --sidebar-bg: #efe7db;
 }
 [data-brand="studio"].dark, .dark[data-brand="studio"] {
   --background: #201c18;
@@ -136,6 +146,7 @@ body {
   --border: #3b342d;
   --input: #3b342d;
   --ring: #8aab9c;
+  --sidebar-bg: #17140f;
 }
 
 /* Command — dark instrument panel, mono numbers, signal green */
@@ -160,6 +171,7 @@ body {
   --brand-grad-from: #16a34a;
   --brand-grad-to: #15803d;
   --brand-accent: #4ade80;
+  --sidebar-bg: #08090c;
 }
 
 .brand-gradient {

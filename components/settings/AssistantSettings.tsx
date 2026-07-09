@@ -31,14 +31,24 @@ export function AssistantSettings({ initialName, initialEmoji, initialVibe }: Pr
 
   async function handleSave() {
     setSaving(true)
-    await fetch('/api/settings', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ assistant_name: name.trim() || 'Nova', assistant_emoji: emoji, assistant_vibe: vibe }),
-    })
-    setSaving(false)
-    setSaved(true)
-    toast.success('Assistant saved')
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assistant_name: name.trim() || 'Nova', assistant_emoji: emoji, assistant_vibe: vibe }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => null) as { error?: string } | null
+        toast.error(data?.error ?? 'Could not save — please try again')
+        return
+      }
+      setSaved(true)
+      toast.success('Assistant saved')
+    } catch {
+      toast.error('Could not save — check your connection')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
