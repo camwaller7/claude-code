@@ -9,7 +9,8 @@ import { requireAuth } from '@/lib/auth/requireAuth'
 import { Platform, PlatformConnection } from '@/types'
 import Link from 'next/link'
 
-interface PlatformConfig {
+interface SingleConfig {
+  kind: 'single'
   label: string
   platform: Platform
   connectHref: string | null
@@ -17,38 +18,47 @@ interface PlatformConfig {
   manualNote?: string
 }
 
+interface GroupConfig {
+  kind: 'group'
+  label: string
+  platforms: Platform[]
+  connectHref: string
+  description: string
+}
+
+type PlatformConfig = SingleConfig | GroupConfig
+
 const PLATFORM_CONFIGS: PlatformConfig[] = [
   {
-    label: 'Instagram',
-    platform: 'instagram',
+    kind: 'group',
+    label: 'Instagram & Facebook',
+    platforms: ['instagram', 'facebook'],
     connectHref: '/api/meta/connect',
-    description: 'Connect your Instagram Business account via Meta.',
+    description: 'One Meta connection covers both — Instagram needs a Business account linked to a Facebook Page, so authorizing once connects whichever of the two are set up on your Meta account.',
   },
   {
-    label: 'Facebook',
-    platform: 'facebook',
-    connectHref: '/api/meta/connect',
-    description: 'Connect your Facebook Pages via Meta OAuth.',
-  },
-  {
+    kind: 'single',
     label: 'X (Twitter)',
     platform: 'x',
     connectHref: '/api/x/connect',
     description: 'Connect your X account to sync DMs and tweets.',
   },
   {
+    kind: 'single',
     label: 'Gmail',
     platform: 'gmail',
     connectHref: '/api/gmail/connect',
     description: 'Connect Gmail to manage email brand inquiries.',
   },
   {
+    kind: 'single',
     label: 'Threads',
     platform: 'threads',
     connectHref: '/api/threads/connect',
     description: 'Connect Threads to publish content.',
   },
   {
+    kind: 'single',
     label: 'TikTok',
     platform: 'tiktok',
     connectHref: null,
@@ -77,6 +87,41 @@ export default async function OnboardingPage() {
         </div>
         <div className="flex flex-col gap-4">
           {PLATFORM_CONFIGS.map((config) => {
+            if (config.kind === 'group') {
+              const linked = config.platforms
+                .map(p => ({ platform: p, connection: connectionsByPlatform.get(p) }))
+                .filter(x => x.connection)
+              const isConnected = linked.length > 0
+
+              return (
+                <Card key={config.label}>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base">{config.label}</CardTitle>
+                      <Badge variant={isConnected ? 'default' : 'outline'}>
+                        {isConnected
+                          ? linked.length === config.platforms.length ? 'Both connected' : `${linked.map(l => l.platform).join(' only')} connected`
+                          : 'Disconnected'}
+                      </Badge>
+                    </div>
+                    <CardDescription>{config.description}</CardDescription>
+                    {linked.map(({ platform, connection }) => (
+                      <p key={platform} className="text-xs text-muted-foreground mt-1 capitalize">
+                        {platform}: <span className="font-medium">{connection!.account_id}</span>
+                      </p>
+                    ))}
+                  </CardHeader>
+                  <CardContent>
+                    <Link href={config.connectHref}>
+                      <Button variant="outline" size="sm">
+                        {isConnected ? 'Reconnect' : 'Connect Instagram & Facebook'}
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              )
+            }
+
             const connection = connectionsByPlatform.get(config.platform)
             const isConnected = Boolean(connection)
 
