@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { adminSupabase } from '@/lib/supabase/admin'
 import { requireApiAuth } from '@/lib/auth/requireApiAuth'
 import { getContentAnalytics } from '@/lib/analytics/stats'
+import { getReminders } from '@/lib/reminders/engine'
 import { getLLMSettings, logTokenUsage } from '@/lib/llm/settings'
 import { llmComplete } from '@/lib/llm/client'
 
@@ -148,6 +149,11 @@ const tools: Anthropic.Tool[] = [
     description: 'Get overall business stats: total revenue, pipeline value, win rate, unread count, client counts, post counts.',
     input_schema: { type: 'object' as const, properties: {} },
   },
+  {
+    name: 'get_reminders',
+    description: 'Get the creator\'s current to-do list: upcoming deal payment/deadline due dates, client important dates, whether they have a post scheduled, days since their last post, best posting time approaching, and unanswered messages (weighted toward brand deals and clients). USE THIS when asked "what do I need to do", "what\'s on my plate", or when proactively summarizing their day.',
+    input_schema: { type: 'object' as const, properties: {} },
+  },
 ]
 
 async function runTool(name: string, input: Record<string, unknown>): Promise<string> {
@@ -250,6 +256,10 @@ async function runTool(name: string, input: Record<string, unknown>): Promise<st
         const { data, error } = await q
         if (error) return `Error: ${error.message}`
         return JSON.stringify(data ?? [])
+      }
+      case 'get_reminders': {
+        const reminders = await getReminders()
+        return JSON.stringify(reminders)
       }
       case 'get_content_analytics': {
         const analytics = await getContentAnalytics()

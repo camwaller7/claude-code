@@ -15,8 +15,18 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   const supabase = await createRouteHandlerSupabase()
-  const body = await request.json()
+
+  let body: { caption?: string; hashtags?: string; platforms?: string[]; media_url?: string; scheduled_at?: string }
+  try {
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+  }
   const { caption, hashtags, platforms, media_url, scheduled_at } = body
+
+  if (!caption?.trim()) {
+    return NextResponse.json({ error: 'Caption is required' }, { status: 400 })
+  }
 
   const status = scheduled_at ? 'scheduled' : 'draft'
 
@@ -29,10 +39,17 @@ export async function POST(request: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   if (scheduled_at && data) {
-    await inngest.send({
-      name: 'post/publish.scheduled',
-      data: { postId: data.id, scheduledAt: scheduled_at },
-    })
+    // Never let a broken/unconfigured Inngest connection fail the save —
+    // the post is already in the DB and correctly marked "scheduled";
+    // the background publish step is best-effort on top of that.
+    try {
+      await inngest.send({
+        name: 'post/publish.scheduled',
+        data: { postId: data.id, scheduledAt: scheduled_at },
+      })
+    } catch (e) {
+      console.error('[posts] inngest.send failed — post saved but auto-publish event not queued:', e)
+    }
   }
 
   return NextResponse.json(data, { status: 201 })

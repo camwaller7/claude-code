@@ -95,7 +95,8 @@ export function NewPostDialog() {
         }),
       })
       if (!res.ok) {
-        toast.error('Could not save post — try again')
+        const data = await res.json().catch(() => null) as { error?: string } | null
+        toast.error(data?.error ?? 'Could not save post — try again')
         return
       }
       toast.success(scheduledAt ? 'Post scheduled 🗓️' : 'Post saved')

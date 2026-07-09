@@ -6,6 +6,7 @@ import { PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { AIChat } from '@/components/chat/AIChat'
 import { ThemeToggle } from './ThemeToggle'
 import { UserMenu } from './UserMenu'
+import { NotificationBell } from './NotificationBell'
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false)
@@ -26,6 +27,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <span className="text-base font-semibold">Influencer PA</span>
           </div>
           <div className="flex items-center gap-2">
+            <NotificationBell />
             <ThemeToggle />
             <UserMenu />
           </div>
