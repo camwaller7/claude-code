@@ -17,7 +17,7 @@ export default async function SettingsPage() {
     .single()
 
   return (
-    <div className="p-6 max-w-3xl mx-auto flex flex-col gap-8">
+    <div className="max-w-3xl mx-auto flex flex-col gap-8">
       <div>
         <h1 className="text-2xl font-bold">Settings</h1>
         <p className="text-sm text-muted-foreground mt-1">Configure your AI model and view usage</p>

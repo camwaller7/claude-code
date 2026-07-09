@@ -30,7 +30,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <UserMenu />
           </div>
         </header>
-        <main className="flex-1 overflow-auto">{children}</main>
+        <main className="flex-1 overflow-auto p-6">{children}</main>
       </div>
       <AIChat />
     </div>

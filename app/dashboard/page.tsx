@@ -35,7 +35,7 @@ export default async function DashboardPage() {
     <>
     <WelcomeFlow />
     {analytics && (
-      <div className="px-6 pt-6 max-w-6xl mx-auto w-full">
+      <div className="max-w-6xl mx-auto w-full pb-6">
         <AudiencePanel analytics={analytics} />
       </div>
     )}

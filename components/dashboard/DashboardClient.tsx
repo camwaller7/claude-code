@@ -131,7 +131,7 @@ export function DashboardClient({ paidDeals, pipelineDeals, allDeals, allConvers
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
 
   return (
-    <div className="p-6 flex flex-col gap-6 max-w-6xl mx-auto">
+    <div className="flex flex-col gap-6 max-w-6xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
