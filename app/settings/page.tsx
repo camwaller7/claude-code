@@ -6,6 +6,7 @@ import { LLMSettings } from '@/components/settings/LLMSettings'
 import { AssistantSettings } from '@/components/settings/AssistantSettings'
 import { LookSettings } from '@/components/settings/LookSettings'
 import { TokenUsagePanel } from '@/components/settings/TokenUsagePanel'
+import { AuditLogPanel } from '@/components/settings/AuditLogPanel'
 
 export default async function SettingsPage() {
   await requireAuth()
@@ -35,6 +36,7 @@ export default async function SettingsPage() {
         initialModel={settings?.llm_model ?? 'claude-sonnet-4-6'}
       />
       <TokenUsagePanel />
+      <AuditLogPanel />
     </div>
   )
 }

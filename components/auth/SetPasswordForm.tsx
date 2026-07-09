@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PASSWORD_REQUIREMENTS, isPasswordValid } from '@/lib/auth/passwordPolicy'
 
-export function SetPasswordForm() {
+export function SetPasswordForm({ isReset = false }: { isReset?: boolean }) {
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
@@ -39,6 +39,11 @@ export function SetPasswordForm() {
         setError(updateError.message)
         return
       }
+      await fetch('/api/auth/password-set', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isReset }),
+      }).catch(() => {})
       window.location.href = '/dashboard'
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong')

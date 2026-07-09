@@ -51,7 +51,7 @@ export default async function SetPasswordPage() {
           className="rounded-3xl p-8"
           style={{ background: '#fffdf9', border: '1px solid #e9dfd2', boxShadow: '0 2px 24px rgba(46, 38, 33, 0.06)' }}
         >
-          <SetPasswordForm />
+          <SetPasswordForm isReset={isReset} />
         </div>
       </div>
     </div>

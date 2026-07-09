@@ -4,6 +4,7 @@ import { adminSupabase } from '@/lib/supabase/admin'
 import { requireApiAuth } from '@/lib/auth/requireApiAuth'
 import { getContentAnalytics } from '@/lib/analytics/stats'
 import { getReminders } from '@/lib/reminders/engine'
+import { auditLog } from '@/lib/audit/log'
 import { getLLMSettings, logTokenUsage } from '@/lib/llm/settings'
 import { llmComplete } from '@/lib/llm/client'
 
@@ -213,6 +214,7 @@ async function runTool(name: string, input: Record<string, unknown>): Promise<st
           .select()
           .single()
         if (error) return `Error: ${error.message}`
+        await auditLog('deal_status_changed', { deal_id: input.deal_id, new_status: input.status, via: 'ai_chat' })
         return `Updated deal "${data.brand_name}" to status "${data.status}"`
       }
       case 'create_deal': {
@@ -229,6 +231,7 @@ async function runTool(name: string, input: Record<string, unknown>): Promise<st
           .select()
           .single()
         if (error) return `Error: ${error.message}`
+        await auditLog('deal_created', { deal_id: data.id, brand_name: data.brand_name, via: 'ai_chat' })
         return `Created deal for "${data.brand_name}" with status "${data.status}"`
       }
       case 'draft_reply': {

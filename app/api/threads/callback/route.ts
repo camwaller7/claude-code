@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { adminSupabase } from '@/lib/supabase/admin'
+import { auditLog } from '@/lib/audit/log'
 import { requireApiAuth } from '@/lib/auth/requireApiAuth'
 
 export async function GET(request: NextRequest) {
@@ -81,6 +82,8 @@ export async function GET(request: NextRequest) {
     },
     { onConflict: 'platform,account_id' }
   )
+
+  await auditLog('platform_connected', { platform: 'threads' })
 
   return NextResponse.redirect(new URL('/onboarding?connected=threads', request.url))
 }

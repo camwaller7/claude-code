@@ -24,8 +24,18 @@ export function LoginForm() {
         setError(authError.message === 'Invalid login credentials'
           ? 'Incorrect email or password'
           : authError.message)
+        fetch('/api/auth/audit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'sign_in_failed', email }),
+        }).catch(() => {})
         return
       }
+      fetch('/api/auth/audit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'sign_in', email }),
+      }).catch(() => {})
       window.location.href = '/dashboard'
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
