@@ -1,7 +1,11 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { adminSupabase } from '@/lib/supabase/admin'
+import { requireApiAuth } from '@/lib/auth/requireApiAuth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const unauthorized = await requireApiAuth(request)
+  if (unauthorized) return unauthorized
+
   const now = new Date()
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()

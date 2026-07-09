@@ -1,7 +1,11 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { adminSupabase } from '@/lib/supabase/admin'
+import { requireApiAuth } from '@/lib/auth/requireApiAuth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const unauthorized = await requireApiAuth(request)
+  if (unauthorized) return unauthorized
+
   const { data, error } = await adminSupabase
     .from('settings')
     .select('*')
@@ -11,7 +15,10 @@ export async function GET() {
   return NextResponse.json(data)
 }
 
-export async function PATCH(request: Request) {
+export async function PATCH(request: NextRequest) {
+  const unauthorized = await requireApiAuth(request)
+  if (unauthorized) return unauthorized
+
   const body = await request.json() as { llm_provider?: string; llm_model?: string; assistant_name?: string; assistant_emoji?: string; assistant_vibe?: string; brand_theme?: string }
   const { data, error } = await adminSupabase
     .from('settings')

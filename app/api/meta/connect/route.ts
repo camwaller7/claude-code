@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { randomBytes } from 'crypto'
 import { cookies } from 'next/headers'
+import { requireApiAuth } from '@/lib/auth/requireApiAuth'
 
-export async function GET(_request: NextRequest) {
+export async function GET(request: NextRequest) {
+  const unauthorized = await requireApiAuth(request)
+  if (unauthorized) return unauthorized
+
   const state = randomBytes(16).toString('hex')
 
   const cookieStore = await cookies()

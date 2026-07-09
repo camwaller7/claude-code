@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { randomBytes, createHash } from 'crypto'
 import { cookies } from 'next/headers'
+import { requireApiAuth } from '@/lib/auth/requireApiAuth'
 
 export async function GET(_request: NextRequest) {
   // Generate PKCE code_verifier (43-128 chars, base64url)

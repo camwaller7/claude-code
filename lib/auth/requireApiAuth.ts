@@ -1,9 +1,14 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
+import { isOwnerEmail } from '@/lib/auth/isOwner'
 
 /**
  * Auth guard for API routes. Returns null when the request carries a valid
- * session; otherwise returns a 401 response the route should return as-is.
+ * session belonging to the app owner; otherwise returns a 401/403 response
+ * the route should return as-is.
+ *
+ * RLS grants any authenticated Supabase user full table access, so this
+ * owner-email check is the real access boundary — not just "is logged in".
  *
  * Internal/background callers (Inngest sync jobs) can authenticate with the
  * INTERNAL_API_SECRET header instead of a cookie session.
@@ -15,10 +20,19 @@ export async function requireApiAuth(request?: Request): Promise<NextResponse | 
     if (header && header === internalSecret) return null
   }
 
+  if (process.env.MAINTENANCE_MODE === 'true') {
+    return NextResponse.json({ error: 'Service temporarily unavailable' }, { status: 503 })
+  }
+
   try {
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (user) return null
+    if (user) {
+      if (!isOwnerEmail(user.email)) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
+      return null
+    }
   } catch {
     // fall through to 401
   }

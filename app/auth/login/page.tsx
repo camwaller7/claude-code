@@ -54,6 +54,16 @@ export default async function LoginPage({ searchParams }: Props) {
               Sign-in failed. Please request a new link.
             </p>
           )}
+          {error === 'forbidden' && (
+            <p className="mb-4 text-sm text-center" style={{ color: '#a3452e' }}>
+              This account isn&apos;t authorized to use this app.
+            </p>
+          )}
+          {error === 'maintenance' && (
+            <p className="mb-4 text-sm text-center" style={{ color: '#a3452e' }}>
+              The app is temporarily offline for maintenance. Please check back shortly.
+            </p>
+          )}
           <LoginForm />
         </div>
 

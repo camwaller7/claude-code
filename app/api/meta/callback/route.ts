@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { adminSupabase } from '@/lib/supabase/admin'
+import { requireApiAuth } from '@/lib/auth/requireApiAuth'
 
 export async function GET(request: NextRequest) {
+  const unauthorized = await requireApiAuth(request)
+  if (unauthorized) return unauthorized
+
   const { searchParams } = new URL(request.url)
   const code = searchParams.get('code')
   const state = searchParams.get('state')
