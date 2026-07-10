@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   const state = randomBytes(16).toString('hex')
 
   const cookieStore = await cookies()
-  cookieStore.set('meta_oauth_state', state, {
+  cookieStore.set('instagram_oauth_state', state, {
     httpOnly: true,
     sameSite: 'lax',
     maxAge: 600,
@@ -18,13 +18,13 @@ export async function GET(request: NextRequest) {
   })
 
   const params = new URLSearchParams({
-    client_id: process.env.META_APP_ID!,
-    redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/meta/callback`,
-    scope: 'pages_messaging,pages_read_engagement,pages_manage_posts,threads_basic,threads_content_publish',
+    client_id: process.env.INSTAGRAM_APP_ID!,
+    redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/instagram/callback`,
+    scope: 'instagram_business_basic,instagram_business_manage_messages,instagram_business_manage_comments',
     response_type: 'code',
     state,
   })
 
-  const url = `https://www.facebook.com/v21.0/dialog/oauth?${params.toString()}`
+  const url = `https://www.instagram.com/oauth/authorize?${params.toString()}`
   return NextResponse.redirect(url)
 }

@@ -68,14 +68,13 @@ export async function GET(request: NextRequest) {
     ? new Date(Date.now() + longLivedData.expires_in * 1000).toISOString()
     : null
 
-  // Get user info / Instagram Business Account ID
+  // Get user info
   const meRes = await fetch(
-    `https://graph.facebook.com/v21.0/me?fields=id,name,instagram_business_account&access_token=${accessToken}`
+    `https://graph.facebook.com/v21.0/me?fields=id,name&access_token=${accessToken}`
   )
   const meData = await meRes.json() as {
     id: string
     name: string
-    instagram_business_account?: { id: string }
     error?: { message: string }
   }
 
@@ -85,7 +84,6 @@ export async function GET(request: NextRequest) {
 
   const connectedAt = new Date().toISOString()
 
-  // Upsert facebook connection
   await adminSupabase.from('platform_connections').upsert(
     {
       platform: 'facebook',
@@ -98,22 +96,7 @@ export async function GET(request: NextRequest) {
     { onConflict: 'platform,account_id' }
   )
 
-  // Upsert instagram connection if we have an IG business account
-  if (meData.instagram_business_account?.id) {
-    await adminSupabase.from('platform_connections').upsert(
-      {
-        platform: 'instagram',
-        account_id: meData.instagram_business_account.id,
-        access_token: accessToken,
-        refresh_token: null,
-        expires_at: expiresAt,
-        connected_at: connectedAt,
-      },
-      { onConflict: 'platform,account_id' }
-    )
-  }
-
-  await auditLog('platform_connected', { platform: 'meta' })
+  await auditLog('platform_connected', { platform: 'facebook' })
 
   return NextResponse.redirect(new URL('/onboarding?connected=meta', request.url))
 }
