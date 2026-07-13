@@ -100,5 +100,5 @@ export async function GET(request: NextRequest) {
 
   await auditLog('platform_connected', { platform: 'instagram' })
 
-  return NextResponse.redirect(new URL('/onboarding?connected=instagram', request.url))
+  return NextResponse.redirect(new URL('/onboarding?connected=instagram', process.env.NEXT_PUBLIC_APP_URL!))
 }
