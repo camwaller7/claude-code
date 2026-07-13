@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
   const params = new URLSearchParams({
     client_id: process.env.META_APP_ID!,
     redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/meta/callback`,
-    scope: 'pages_messaging,pages_read_engagement,pages_manage_posts,threads_basic,threads_content_publish',
+    scope: 'pages_messaging,pages_read_engagement,pages_manage_posts',
     response_type: 'code',
     state,
   })
