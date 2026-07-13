@@ -98,5 +98,4 @@ export async function GET(request: NextRequest) {
 
   await auditLog('platform_connected', { platform: 'facebook' })
 
-  return NextResponse.redirect(new URL('/onboarding?connected=meta', request.url))
-}
+  return NextResponse.redirect(new URL('/onboarding?connected=meta', process.env.NEXT_PUBLIC_APP_URL!))}
