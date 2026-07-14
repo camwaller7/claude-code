@@ -4,6 +4,7 @@ import { adminSupabase } from '@/lib/supabase/admin'
 import { auditLog } from '@/lib/audit/log'
 import { requireApiAuth } from '@/lib/auth/requireApiAuth'
 import { encryptToken } from '@/lib/crypto/tokenCipher'
+import { META_GRAPH_VERSION } from '@/lib/platform/metaVersion'
 
 export async function GET(request: NextRequest) {
   const unauthorized = await requireApiAuth(request)
@@ -102,7 +103,7 @@ export async function GET(request: NextRequest) {
   // Without this, Meta never sends DM/comment events to our webhook — the
   // account has to explicitly subscribe the app to receive them.
   const subscribeRes = await fetch(
-    `https://graph.instagram.com/v21.0/${meData.user_id}/subscribed_apps?subscribed_fields=messages,comments&access_token=${accessToken}`,
+    `https://graph.instagram.com/${META_GRAPH_VERSION}/${meData.user_id}/subscribed_apps?subscribed_fields=messages,comments&access_token=${accessToken}`,
     { method: 'POST' }
   )
   const subscribeData = await subscribeRes.json().catch(() => ({})) as { success?: boolean; error?: { message: string } }

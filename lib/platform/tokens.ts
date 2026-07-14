@@ -1,5 +1,6 @@
 import { adminSupabase } from '@/lib/supabase/admin'
 import { encryptToken, decryptToken } from '@/lib/crypto/tokenCipher'
+import { META_GRAPH_VERSION } from '@/lib/platform/metaVersion'
 
 export async function getValidToken(platform: 'gmail' | 'x'): Promise<string> {
   const { data: conn, error } = await adminSupabase
@@ -96,7 +97,7 @@ async function refreshMetaToken(
       client_secret: process.env.META_APP_SECRET!,
       fb_exchange_token: conn.access_token,
     })
-    const res = await fetch(`https://graph.facebook.com/v21.0/oauth/access_token?${params.toString()}`)
+    const res = await fetch(`https://graph.facebook.com/${META_GRAPH_VERSION}/oauth/access_token?${params.toString()}`)
     const json = await res.json() as { access_token?: string; expires_in?: number; error?: { message: string } }
     if (!res.ok || !json.access_token) {
       throw new Error(`Facebook token refresh failed: ${json.error?.message ?? res.status}`)

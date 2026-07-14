@@ -1,6 +1,7 @@
 import { inngest } from './client'
 import { adminSupabase } from '@/lib/supabase/admin'
 import { getValidToken, getValidMetaToken } from '@/lib/platform/tokens'
+import { META_GRAPH_VERSION, THREADS_GRAPH_VERSION } from '@/lib/platform/metaVersion'
 import type { Platform } from '@/types'
 
 // ─── Inbox sync (runs every 15 min) ──────────────────────────────────────────
@@ -44,7 +45,7 @@ async function publishToInstagram(
   if (!mediaUrl) throw new Error('Instagram requires media')
 
   const containerRes = await fetch(
-    `https://graph.facebook.com/v21.0/${igAccountId}/media`,
+    `https://graph.facebook.com/${META_GRAPH_VERSION}/${igAccountId}/media`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -55,7 +56,7 @@ async function publishToInstagram(
   if (!container.id) throw new Error(container.error?.message ?? 'No container id')
 
   const publishRes = await fetch(
-    `https://graph.facebook.com/v21.0/${igAccountId}/media_publish`,
+    `https://graph.facebook.com/${META_GRAPH_VERSION}/${igAccountId}/media_publish`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -74,8 +75,8 @@ async function publishToFacebook(
   pageId: string
 ): Promise<string> {
   const endpoint = mediaUrl
-    ? `https://graph.facebook.com/v21.0/${pageId}/photos`
-    : `https://graph.facebook.com/v21.0/${pageId}/feed`
+    ? `https://graph.facebook.com/${META_GRAPH_VERSION}/${pageId}/photos`
+    : `https://graph.facebook.com/${META_GRAPH_VERSION}/${pageId}/feed`
 
   const payload: Record<string, string> = { access_token: token }
   if (mediaUrl) {
@@ -124,7 +125,7 @@ async function publishToThreads(
   if (mediaUrl) containerPayload.image_url = mediaUrl
 
   const containerRes = await fetch(
-    `https://graph.threads.net/v1.0/${threadsUserId}/threads`,
+    `https://graph.threads.net/${THREADS_GRAPH_VERSION}/${threadsUserId}/threads`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -135,7 +136,7 @@ async function publishToThreads(
   if (!container.id) throw new Error(container.error?.message ?? 'No container id')
 
   const publishRes = await fetch(
-    `https://graph.threads.net/v1.0/${threadsUserId}/threads_publish`,
+    `https://graph.threads.net/${THREADS_GRAPH_VERSION}/${threadsUserId}/threads_publish`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

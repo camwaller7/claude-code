@@ -3,6 +3,7 @@ import { adminSupabase } from '@/lib/supabase/admin'
 import { requireApiAuth } from '@/lib/auth/requireApiAuth'
 import { getValidToken, getValidMetaToken } from '@/lib/platform/tokens'
 import { decryptToken } from '@/lib/crypto/tokenCipher'
+import { META_GRAPH_VERSION } from '@/lib/platform/metaVersion'
 
 const META_MESSAGING_WINDOW_MS = 24 * 60 * 60 * 1000
 
@@ -57,7 +58,7 @@ async function sendReply(conv: Record<string, unknown>, body: string): Promise<S
     }
 
     const res = await fetch(
-      `https://graph.facebook.com/v21.0/me/messages?access_token=${token}`,
+      `https://graph.facebook.com/${META_GRAPH_VERSION}/me/messages?access_token=${token}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

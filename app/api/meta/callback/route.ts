@@ -4,6 +4,7 @@ import { adminSupabase } from '@/lib/supabase/admin'
 import { auditLog } from '@/lib/audit/log'
 import { requireApiAuth } from '@/lib/auth/requireApiAuth'
 import { encryptToken } from '@/lib/crypto/tokenCipher'
+import { META_GRAPH_VERSION } from '@/lib/platform/metaVersion'
 
 export async function GET(request: NextRequest) {
   const unauthorized = await requireApiAuth(request)
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
   const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/meta/callback`
 
   // Exchange code for short-lived token
-  const tokenRes = await fetch('https://graph.facebook.com/v21.0/oauth/access_token', {
+  const tokenRes = await fetch(`https://graph.facebook.com/${META_GRAPH_VERSION}/oauth/access_token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
@@ -52,7 +53,7 @@ export async function GET(request: NextRequest) {
     fb_exchange_token: tokenData.access_token,
   })
   const longLivedRes = await fetch(
-    `https://graph.facebook.com/v21.0/oauth/access_token?${longLivedParams.toString()}`
+    `https://graph.facebook.com/${META_GRAPH_VERSION}/oauth/access_token?${longLivedParams.toString()}`
   )
   const longLivedData = await longLivedRes.json() as {
     access_token: string
@@ -71,7 +72,7 @@ export async function GET(request: NextRequest) {
 
   // Get user info
   const meRes = await fetch(
-    `https://graph.facebook.com/v21.0/me?fields=id,name&access_token=${accessToken}`
+    `https://graph.facebook.com/${META_GRAPH_VERSION}/me?fields=id,name&access_token=${accessToken}`
   )
   const meData = await meRes.json() as {
     id: string
@@ -89,7 +90,7 @@ export async function GET(request: NextRequest) {
   // to a Page — only a Page's own access token can. Look up the Pages this
   // user manages and store each Page's token instead.
   const accountsRes = await fetch(
-    `https://graph.facebook.com/v21.0/me/accounts?fields=id,name,access_token&access_token=${accessToken}`
+    `https://graph.facebook.com/${META_GRAPH_VERSION}/me/accounts?fields=id,name,access_token&access_token=${accessToken}`
   )
   const accountsData = await accountsRes.json() as {
     data?: { id: string; name: string; access_token: string }[]
@@ -124,7 +125,7 @@ export async function GET(request: NextRequest) {
     // Without this, Meta never sends message events to our webhook — the
     // Page has to explicitly subscribe the app to receive them.
     const subscribeRes = await fetch(
-      `https://graph.facebook.com/v21.0/${page.id}/subscribed_apps?subscribed_fields=messages,messaging_postbacks&access_token=${page.access_token}`,
+      `https://graph.facebook.com/${META_GRAPH_VERSION}/${page.id}/subscribed_apps?subscribed_fields=messages,messaging_postbacks&access_token=${page.access_token}`,
       { method: 'POST' }
     )
     const subscribeData = await subscribeRes.json().catch(() => ({})) as { success?: boolean; error?: { message: string } }
