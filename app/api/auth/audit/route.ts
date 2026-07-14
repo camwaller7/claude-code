@@ -1,13 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auditLog } from '@/lib/audit/log'
+import { isRateLimited, clientIp } from '@/lib/rateLimit'
 
 // Deliberately unauthenticated — a failed/successful sign-in attempt has no
 // session yet to prove identity with. Scope is tightly limited: a fixed
 // action allowlist and a bounded email string, write-only, nothing is ever
-// read back. Worst case from abuse is log noise, not a data exposure.
+// read back. Worst case from abuse is log noise, not a data exposure — rate
+// limited anyway so it can't be used to spam the audit log.
 const ALLOWED_ACTIONS = new Set(['sign_in', 'sign_in_failed'])
 
 export async function POST(request: NextRequest) {
+  if (isRateLimited(`auth-audit:${clientIp(request)}`, 20, 60_000)) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+  }
+
   const body = await request.json().catch(() => null) as { action?: string; email?: string } | null
   if (!body || !ALLOWED_ACTIONS.has(body.action ?? '')) {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 })

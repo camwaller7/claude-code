@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { adminSupabase } from '@/lib/supabase/admin'
 import { auditLog } from '@/lib/audit/log'
 import { requireApiAuth } from '@/lib/auth/requireApiAuth'
+import { encryptToken } from '@/lib/crypto/tokenCipher'
 
 export async function GET(request: NextRequest) {
   const unauthorized = await requireApiAuth(request)
@@ -112,7 +113,7 @@ export async function GET(request: NextRequest) {
       {
         platform: 'facebook',
         account_id: page.id,
-        access_token: page.access_token,
+        access_token: encryptToken(page.access_token),
         refresh_token: null,
         expires_at: expiresAt,
         connected_at: connectedAt,

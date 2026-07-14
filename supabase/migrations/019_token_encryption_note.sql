@@ -1,0 +1,14 @@
+-- No schema change needed. platform_connections.access_token/refresh_token
+-- stay `text` columns — the app now stores an encrypted, versioned string
+-- (prefixed "v1:") instead of plaintext, encrypted/decrypted in Node via
+-- lib/crypto/tokenCipher.ts (AES-256-GCM, key in TOKEN_ENCRYPTION_KEY).
+--
+-- Existing rows written before this change remain plaintext and keep working
+-- — decryptToken() returns any value without the "v1:" prefix as-is. They'll
+-- convert to encrypted automatically the next time that connection's token is
+-- refreshed, or immediately if reconnected. No backfill/rotation needed here.
+--
+-- ACTION REQUIRED: set TOKEN_ENCRYPTION_KEY in Railway before this deploys —
+-- see .env.example for how to generate it. Back it up somewhere outside
+-- Railway; losing it makes every encrypted token permanently unreadable.
+select 1;

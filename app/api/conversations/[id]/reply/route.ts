@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { adminSupabase } from '@/lib/supabase/admin'
 import { requireApiAuth } from '@/lib/auth/requireApiAuth'
 import { getValidToken, getValidMetaToken } from '@/lib/platform/tokens'
+import { decryptToken } from '@/lib/crypto/tokenCipher'
 
 const META_MESSAGING_WINDOW_MS = 24 * 60 * 60 * 1000
 
@@ -52,7 +53,7 @@ async function sendReply(conv: Record<string, unknown>, body: string): Promise<S
     try {
       token = await getValidMetaToken(platform as 'facebook' | 'instagram', conn.account_id as string)
     } catch {
-      token = conn.access_token
+      token = decryptToken(conn.access_token as string)!
     }
 
     const res = await fetch(

@@ -1,4 +1,5 @@
 import { adminSupabase } from '@/lib/supabase/admin'
+import { encryptToken, decryptToken } from '@/lib/crypto/tokenCipher'
 
 export async function getValidToken(platform: 'gmail' | 'x'): Promise<string> {
   const { data: conn, error } = await adminSupabase
@@ -12,11 +13,14 @@ export async function getValidToken(platform: 'gmail' | 'x'): Promise<string> {
     throw new Error(`No platform connection found for ${platform}`)
   }
 
+  const accessToken = decryptToken(conn.access_token)!
+  const refreshToken = decryptToken(conn.refresh_token)
+
   const expiresAt = conn.expires_at ? new Date(conn.expires_at) : null
   const needsRefresh = expiresAt ? expiresAt.getTime() - Date.now() < 5 * 60 * 1000 : false
 
   if (!needsRefresh) {
-    return conn.access_token
+    return accessToken
   }
 
   if (platform === 'gmail') {
@@ -26,7 +30,7 @@ export async function getValidToken(platform: 'gmail' | 'x'): Promise<string> {
       body: new URLSearchParams({
         client_id: process.env.GMAIL_CLIENT_ID!,
         client_secret: process.env.GMAIL_CLIENT_SECRET!,
-        refresh_token: conn.refresh_token!,
+        refresh_token: refreshToken!,
         grant_type: 'refresh_token',
       }),
     })
@@ -34,7 +38,7 @@ export async function getValidToken(platform: 'gmail' | 'x'): Promise<string> {
     const newExpiresAt = new Date(Date.now() + json.expires_in * 1000).toISOString()
     await adminSupabase
       .from('platform_connections')
-      .update({ access_token: json.access_token, expires_at: newExpiresAt })
+      .update({ access_token: encryptToken(json.access_token), expires_at: newExpiresAt })
       .eq('id', conn.id)
     return json.access_token
   }
@@ -50,7 +54,7 @@ export async function getValidToken(platform: 'gmail' | 'x'): Promise<string> {
       Authorization: `Basic ${credentials}`,
     },
     body: new URLSearchParams({
-      refresh_token: conn.refresh_token!,
+      refresh_token: refreshToken!,
       grant_type: 'refresh_token',
     }),
   })
@@ -63,8 +67,8 @@ export async function getValidToken(platform: 'gmail' | 'x'): Promise<string> {
   await adminSupabase
     .from('platform_connections')
     .update({
-      access_token: json.access_token,
-      refresh_token: json.refresh_token,
+      access_token: encryptToken(json.access_token),
+      refresh_token: encryptToken(json.refresh_token),
       expires_at: newExpiresAt,
     })
     .eq('id', conn.id)
@@ -100,7 +104,7 @@ async function refreshMetaToken(
     const newExpiresAt = json.expires_in ? new Date(Date.now() + json.expires_in * 1000).toISOString() : null
     await adminSupabase
       .from('platform_connections')
-      .update({ access_token: json.access_token, expires_at: newExpiresAt })
+      .update({ access_token: encryptToken(json.access_token), expires_at: newExpiresAt })
       .eq('id', conn.id)
     return json.access_token
   }
@@ -118,7 +122,7 @@ async function refreshMetaToken(
     const newExpiresAt = json.expires_in ? new Date(Date.now() + json.expires_in * 1000).toISOString() : null
     await adminSupabase
       .from('platform_connections')
-      .update({ access_token: json.access_token, expires_at: newExpiresAt })
+      .update({ access_token: encryptToken(json.access_token), expires_at: newExpiresAt })
       .eq('id', conn.id)
     return json.access_token
   }
@@ -136,7 +140,7 @@ async function refreshMetaToken(
   const newExpiresAt = json.expires_in ? new Date(Date.now() + json.expires_in * 1000).toISOString() : null
   await adminSupabase
     .from('platform_connections')
-    .update({ access_token: json.access_token, expires_at: newExpiresAt })
+    .update({ access_token: encryptToken(json.access_token), expires_at: newExpiresAt })
     .eq('id', conn.id)
   return json.access_token
 }
@@ -158,19 +162,21 @@ export async function getValidMetaToken(
     throw new Error(`No ${platform} connection found for account ${accountId}`)
   }
 
+  const decryptedConn: MetaConnection = { ...conn, access_token: decryptToken(conn.access_token)! }
+
   const expiresAt = conn.expires_at ? new Date(conn.expires_at) : null
   // Refresh proactively well before expiry (Meta long-lived tokens last ~60
   // days) rather than waiting until they're nearly dead.
   const needsRefresh = expiresAt ? expiresAt.getTime() - Date.now() < 3 * 24 * 60 * 60 * 1000 : false
 
-  if (!needsRefresh) return conn.access_token
+  if (!needsRefresh) return decryptedConn.access_token
 
   try {
-    return await refreshMetaToken(platform, conn)
+    return await refreshMetaToken(platform, decryptedConn)
   } catch (err) {
     console.error(`[tokens] ${platform} refresh failed, falling back to existing token:`, err)
     // Fall back to the current token rather than hard-failing the caller —
     // it may still be valid for a few more days even if refresh failed.
-    return conn.access_token
+    return decryptedConn.access_token
   }
 }
