@@ -3,7 +3,10 @@ import { randomBytes, createHash } from 'crypto'
 import { cookies } from 'next/headers'
 import { requireApiAuth } from '@/lib/auth/requireApiAuth'
 
-export async function GET(_request: NextRequest) {
+export async function GET(request: NextRequest) {
+  const unauthorized = await requireApiAuth(request)
+  if (unauthorized) return unauthorized
+
   // Generate PKCE code_verifier (43-128 chars, base64url)
   const codeVerifier = randomBytes(32).toString('base64url')
 

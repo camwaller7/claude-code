@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerSupabase } from '@/lib/supabase/server'
 import { inngest } from '@/lib/inngest/client'
+import { requireApiAuth } from '@/lib/auth/requireApiAuth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const unauthorized = await requireApiAuth(request)
+  if (unauthorized) return unauthorized
+
   const supabase = await createRouteHandlerSupabase()
   const { data, error } = await supabase
     .from('posts')
@@ -14,6 +18,9 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const unauthorized = await requireApiAuth(request)
+  if (unauthorized) return unauthorized
+
   const supabase = await createRouteHandlerSupabase()
 
   let body: { caption?: string; hashtags?: string; platforms?: string[]; media_url?: string; scheduled_at?: string }

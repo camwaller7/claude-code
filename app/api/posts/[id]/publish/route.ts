@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerSupabase } from '@/lib/supabase/server'
 import { inngest } from '@/lib/inngest/client'
+import { requireApiAuth } from '@/lib/auth/requireApiAuth'
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const unauthorized = await requireApiAuth(request)
+  if (unauthorized) return unauthorized
+
   const { id } = await params
   const supabase = await createRouteHandlerSupabase()
 
@@ -20,10 +24,15 @@ export async function POST(
     return NextResponse.json({ error: `Post is already ${post.status}` }, { status: 409 })
   }
 
-  await inngest.send({
-    name: 'post/publish.scheduled',
-    data: { postId: id, scheduledAt: new Date().toISOString() },
-  })
+  try {
+    await inngest.send({
+      name: 'post/publish.scheduled',
+      data: { postId: id, scheduledAt: new Date().toISOString() },
+    })
+  } catch (e) {
+    console.error('[posts/publish] inngest.send failed:', e)
+    return NextResponse.json({ error: 'Could not queue publish job' }, { status: 502 })
+  }
 
   return NextResponse.json({ queued: true })
 }

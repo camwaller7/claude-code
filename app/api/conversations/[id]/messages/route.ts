@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerSupabase } from '@/lib/supabase/server'
 import { triageMessage } from '@/lib/anthropic/triage'
+import { requireApiAuth } from '@/lib/auth/requireApiAuth'
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const unauthorized = await requireApiAuth(request)
+  if (unauthorized) return unauthorized
+
   const { id } = await params
   const supabase = await createRouteHandlerSupabase()
   const { data, error } = await supabase
@@ -22,6 +26,9 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const unauthorized = await requireApiAuth(request)
+  if (unauthorized) return unauthorized
+
   const { id } = await params
   const supabase = await createRouteHandlerSupabase()
   const body = await request.json()

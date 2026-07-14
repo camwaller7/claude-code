@@ -12,13 +12,16 @@ export const syncInboxes = inngest.createFunction(
       { event: 'inbox/sync.requested' },
       { cron: '*/15 * * * *' },
     ],
+    retries: 3,
   },
   async ({ step }) => {
     await step.run('sync-gmail', async () => {
-      await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/gmail/sync`, { method: 'POST', headers: { 'x-internal-secret': process.env.INTERNAL_API_SECRET ?? '' } })
+      const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/gmail/sync`, { method: 'POST', headers: { 'x-internal-secret': process.env.INTERNAL_API_SECRET ?? '' } })
+      if (!res.ok) throw new Error(`Gmail sync failed: ${res.status} ${await res.text().catch(() => '')}`)
     })
     await step.run('sync-x', async () => {
-      await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/x/sync`, { method: 'POST', headers: { 'x-internal-secret': process.env.INTERNAL_API_SECRET ?? '' } })
+      const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/x/sync`, { method: 'POST', headers: { 'x-internal-secret': process.env.INTERNAL_API_SECRET ?? '' } })
+      if (!res.ok) throw new Error(`X sync failed: ${res.status} ${await res.text().catch(() => '')}`)
     })
   }
 )
@@ -254,8 +257,10 @@ export const publishPost = inngest.createFunction(
       const allFailed = results.every((r) => !r.success)
 
       const platformPostIds: Record<string, string> = {}
+      const platformErrors: Record<string, string> = {}
       for (const r of results) {
         if (r.success && r.postId) platformPostIds[r.platform] = r.postId
+        if (!r.success && r.error) platformErrors[r.platform] = r.error
       }
 
       await adminSupabase
@@ -264,6 +269,7 @@ export const publishPost = inngest.createFunction(
           status: allFailed ? 'failed' : 'published',
           published_at: anySuccess ? new Date().toISOString() : null,
           platform_post_ids: Object.keys(platformPostIds).length > 0 ? platformPostIds : null,
+          publish_errors: Object.keys(platformErrors).length > 0 ? platformErrors : null,
         })
         .eq('id', postId)
     })

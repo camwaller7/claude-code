@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerSupabase } from '@/lib/supabase/server'
+import { requireApiAuth } from '@/lib/auth/requireApiAuth'
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const unauthorized = await requireApiAuth(request)
+  if (unauthorized) return unauthorized
+
   const { id } = await params
   const supabase = await createRouteHandlerSupabase()
   const { data, error } = await supabase.from('clients').select('*').eq('id', id).single()
@@ -16,6 +20,9 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const unauthorized = await requireApiAuth(request)
+  if (unauthorized) return unauthorized
+
   const { id } = await params
   const supabase = await createRouteHandlerSupabase()
   const body = await request.json() as Record<string, unknown>
@@ -45,9 +52,12 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const unauthorized = await requireApiAuth(request)
+  if (unauthorized) return unauthorized
+
   const { id } = await params
   const supabase = await createRouteHandlerSupabase()
   const { error } = await supabase.from('clients').delete().eq('id', id)

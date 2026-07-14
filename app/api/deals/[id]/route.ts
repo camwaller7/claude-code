@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerSupabase } from '@/lib/supabase/server'
+import { requireApiAuth } from '@/lib/auth/requireApiAuth'
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const unauthorized = await requireApiAuth(request)
+  if (unauthorized) return unauthorized
+
   const { id } = await params
   const supabase = await createRouteHandlerSupabase()
   const body = await request.json()
@@ -30,9 +34,12 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const unauthorized = await requireApiAuth(request)
+  if (unauthorized) return unauthorized
+
   const { id } = await params
   const supabase = await createRouteHandlerSupabase()
   const { error } = await supabase.from('deals').delete().eq('id', id)

@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerSupabase } from '@/lib/supabase/server'
+import { requireApiAuth } from '@/lib/auth/requireApiAuth'
 
 export async function GET(request: NextRequest) {
+  const unauthorized = await requireApiAuth(request)
+  if (unauthorized) return unauthorized
+
   const supabase = await createRouteHandlerSupabase()
   const status = request.nextUrl.searchParams.get('status')
 
@@ -14,6 +18,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const unauthorized = await requireApiAuth(request)
+  if (unauthorized) return unauthorized
+
   const supabase = await createRouteHandlerSupabase()
   const body = await request.json()
   const { brand_name, contact_name, deal_value, currency, conversation_id } = body
