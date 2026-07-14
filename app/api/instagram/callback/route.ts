@@ -5,6 +5,7 @@ import { auditLog } from '@/lib/audit/log'
 import { requireApiAuth } from '@/lib/auth/requireApiAuth'
 import { encryptToken } from '@/lib/crypto/tokenCipher'
 import { META_GRAPH_VERSION } from '@/lib/platform/metaVersion'
+import { triageMessage } from '@/lib/anthropic/triage'
 
 export async function GET(request: NextRequest) {
   const unauthorized = await requireApiAuth(request)
@@ -110,6 +111,73 @@ export async function GET(request: NextRequest) {
   if (!subscribeRes.ok || subscribeData.error) {
     console.error('[instagram/callback] webhook subscription failed:', subscribeData.error?.message)
   }
+
+
+      // Backfill existing conversations so unread DMs from before the connection show up immediately, instead of only capturing messages from now on.
+      try {
+              const convRes = await fetch(
+                        `https://graph.instagram.com/${META_GRAPH_VERSION}/${meData.user_id}/conversations?platform=instagram&fields=participants&access_token=${accessToken}`
+                      )
+              const convData = await convRes.json() as {
+                        data?: { id: string }[]
+                        error?: { message: string }
+              }
+
+              for (const thread of (convData.data ?? []).slice(0, 25)) {
+                        const msgsRes = await fetch(
+                                    `https://graph.instagram.com/${META_GRAPH_VERSION}/${thread.id}?fields=messages.limit(20){id,from,message,created_time}&access_token=${accessToken}`
+                                  )
+                        const msgsData = await msgsRes.json() as {
+                                    messages?: { data?: { id: string; from: { id: string }; message?: string; created_time: string }[] }
+                                    error?: { message: string }
+                        }
+
+                        const msgs = msgsData.messages?.data ?? []
+                        if (msgs.length === 0) continue
+
+                        const otherParticipant = msgs.find((m) => m.from.id !== meData.user_id)?.from.id ?? thread.id
+
+                        const { data: conv } = await adminSupabase.from('conversations').upsert(
+                          {
+                                        platform: 'instagram',
+                                        external_thread_id: otherParticipant,
+                                        contact_name: otherParticipant,
+                                        contact_handle: otherParticipant,
+                                        status: 'needs_reply',
+                                        last_message_at: msgs[0]?.created_time ?? new Date().toISOString(),
+                          },
+                          { onConflict: 'platform,external_thread_id' }
+                                  ).select().single()
+
+                        if (!conv) continue
+
+                        let lastInboundText: string | null = null
+                        for (const m of msgs) {
+                                    if (!m.message) continue
+                                    await adminSupabase.from('messages').upsert(
+                                      {
+                                                      conversation_id: conv.id,
+                                                      direction: m.from.id === meData.user_id ? 'outbound' : 'inbound',
+                                                      body: m.message,
+                                                      external_message_id: m.id,
+                                                      sent_at: m.created_time,
+                                      },
+                                      { onConflict: 'external_message_id', ignoreDuplicates: true }
+                                                )
+                                    if (m.from.id !== meData.user_id) lastInboundText = m.message
+                        }
+
+                        if (lastInboundText) {
+                                    const triage = await triageMessage(lastInboundText, otherParticipant, 'instagram')
+                                    await adminSupabase
+                                      .from('conversations')
+                                      .update({ category: triage.category, priority: triage.priority })
+                                      .eq('id', conv.id)
+                        }
+              }
+      } catch (err) {
+              console.error('[instagram/callback] conversation backfill failed:', err)
+      }
 
   await auditLog('platform_connected', { platform: 'instagram' })
 
