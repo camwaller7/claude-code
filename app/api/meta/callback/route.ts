@@ -84,18 +84,54 @@ export async function GET(request: NextRequest) {
 
   const connectedAt = new Date().toISOString()
 
-  await adminSupabase.from('platform_connections').upsert(
-    {
-      platform: 'facebook',
-      account_id: meData.id,
-      access_token: accessToken,
-      refresh_token: null,
-      expires_at: expiresAt,
-      connected_at: connectedAt,
-    },
-    { onConflict: 'platform,account_id' }
+  // The user access token above can't send/receive Page messages or publish
+  // to a Page — only a Page's own access token can. Look up the Pages this
+  // user manages and store each Page's token instead.
+  const accountsRes = await fetch(
+    `https://graph.facebook.com/v21.0/me/accounts?fields=id,name,access_token&access_token=${accessToken}`
   )
+  const accountsData = await accountsRes.json() as {
+    data?: { id: string; name: string; access_token: string }[]
+    error?: { message: string }
+  }
 
-  await auditLog('platform_connected', { platform: 'facebook' })
+  if (accountsData.error) {
+    return NextResponse.json({ error: accountsData.error.message }, { status: 400 })
+  }
+
+  const pages = accountsData.data ?? []
+  if (pages.length === 0) {
+    return NextResponse.json(
+      { error: 'No Facebook Pages found for this account. A Facebook Page (which you admin) is required to receive messages and publish posts.' },
+      { status: 400 }
+    )
+  }
+
+  for (const page of pages) {
+    await adminSupabase.from('platform_connections').upsert(
+      {
+        platform: 'facebook',
+        account_id: page.id,
+        access_token: page.access_token,
+        refresh_token: null,
+        expires_at: expiresAt,
+        connected_at: connectedAt,
+      },
+      { onConflict: 'platform,account_id' }
+    )
+
+    // Without this, Meta never sends message events to our webhook — the
+    // Page has to explicitly subscribe the app to receive them.
+    const subscribeRes = await fetch(
+      `https://graph.facebook.com/v21.0/${page.id}/subscribed_apps?subscribed_fields=messages,messaging_postbacks&access_token=${page.access_token}`,
+      { method: 'POST' }
+    )
+    const subscribeData = await subscribeRes.json().catch(() => ({})) as { success?: boolean; error?: { message: string } }
+    if (!subscribeRes.ok || subscribeData.error) {
+      console.error(`[meta/callback] webhook subscription failed for page ${page.id}:`, subscribeData.error?.message)
+    }
+  }
+
+  await auditLog('platform_connected', { platform: 'facebook', pageCount: pages.length })
 
   return NextResponse.redirect(new URL('/onboarding?connected=meta', process.env.NEXT_PUBLIC_APP_URL!))}

@@ -98,6 +98,17 @@ export async function GET(request: NextRequest) {
     { onConflict: 'platform,account_id' }
   )
 
+  // Without this, Meta never sends DM/comment events to our webhook — the
+  // account has to explicitly subscribe the app to receive them.
+  const subscribeRes = await fetch(
+    `https://graph.instagram.com/v21.0/${meData.user_id}/subscribed_apps?subscribed_fields=messages,comments&access_token=${accessToken}`,
+    { method: 'POST' }
+  )
+  const subscribeData = await subscribeRes.json().catch(() => ({})) as { success?: boolean; error?: { message: string } }
+  if (!subscribeRes.ok || subscribeData.error) {
+    console.error('[instagram/callback] webhook subscription failed:', subscribeData.error?.message)
+  }
+
   await auditLog('platform_connected', { platform: 'instagram' })
 
   return NextResponse.redirect(new URL('/onboarding?connected=instagram', process.env.NEXT_PUBLIC_APP_URL!))
