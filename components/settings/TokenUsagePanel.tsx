@@ -22,13 +22,24 @@ function fmt(n: number) {
 
 export function TokenUsagePanel() {
   const [usage, setUsage] = useState<UsageSummary | null>(null)
+  const [error, setError] = useState(false)
 
   useEffect(() => {
     fetch('/api/settings/token-usage')
       .then(r => r.json())
-      .then(data => { if (data && data.today && data.byFeature) setUsage(data) })
-      .catch(console.error)
+      .then(data => {
+        if (data && data.today && data.byFeature) setUsage(data)
+        else setError(true)
+      })
+      .catch(() => setError(true))
   }, [])
+
+  if (error) return (
+    <Card>
+      <CardHeader><CardTitle>Token Usage</CardTitle></CardHeader>
+      <CardContent><p className="text-sm text-destructive">Could not load token usage — try refreshing the page.</p></CardContent>
+    </Card>
+  )
 
   if (!usage) return (
     <Card>

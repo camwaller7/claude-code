@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import type { Message, Conversation } from '@/types'
-import { cn } from '@/lib/utils'
+import { cn, formatTime } from '@/lib/utils'
 
 interface Props {
   messages: Message[]
@@ -42,7 +42,7 @@ function MessageBubble({ message }: { message: Message }) {
       )}
       {message.sent_at && (
         <span className="text-xs text-muted-foreground">
-          {new Date(message.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          {formatTime(message.sent_at)}
         </span>
       )}
     </div>

@@ -70,3 +70,107 @@ export async function getValidToken(platform: 'gmail' | 'x'): Promise<string> {
     .eq('id', conn.id)
   return json.access_token
 }
+
+interface MetaConnection {
+  id: string
+  access_token: string
+  expires_at: string | null
+}
+
+// Facebook/Instagram/Threads long-lived tokens (~60 days) have no refresh_token
+// — they're extended by re-exchanging the still-valid current token for a new
+// one before it expires. Without this, every Meta connection silently dies
+// ~60 days after connecting with no reconnect prompt.
+async function refreshMetaToken(
+  platform: 'facebook' | 'instagram' | 'threads',
+  conn: MetaConnection
+): Promise<string> {
+  if (platform === 'facebook') {
+    const params = new URLSearchParams({
+      grant_type: 'fb_exchange_token',
+      client_id: process.env.META_APP_ID!,
+      client_secret: process.env.META_APP_SECRET!,
+      fb_exchange_token: conn.access_token,
+    })
+    const res = await fetch(`https://graph.facebook.com/v21.0/oauth/access_token?${params.toString()}`)
+    const json = await res.json() as { access_token?: string; expires_in?: number; error?: { message: string } }
+    if (!res.ok || !json.access_token) {
+      throw new Error(`Facebook token refresh failed: ${json.error?.message ?? res.status}`)
+    }
+    const newExpiresAt = json.expires_in ? new Date(Date.now() + json.expires_in * 1000).toISOString() : null
+    await adminSupabase
+      .from('platform_connections')
+      .update({ access_token: json.access_token, expires_at: newExpiresAt })
+      .eq('id', conn.id)
+    return json.access_token
+  }
+
+  if (platform === 'instagram') {
+    const params = new URLSearchParams({
+      grant_type: 'ig_refresh_token',
+      access_token: conn.access_token,
+    })
+    const res = await fetch(`https://graph.instagram.com/refresh_access_token?${params.toString()}`)
+    const json = await res.json() as { access_token?: string; expires_in?: number; error_message?: string }
+    if (!res.ok || !json.access_token) {
+      throw new Error(`Instagram token refresh failed: ${json.error_message ?? res.status}`)
+    }
+    const newExpiresAt = json.expires_in ? new Date(Date.now() + json.expires_in * 1000).toISOString() : null
+    await adminSupabase
+      .from('platform_connections')
+      .update({ access_token: json.access_token, expires_at: newExpiresAt })
+      .eq('id', conn.id)
+    return json.access_token
+  }
+
+  // Threads uses the same long-lived-token refresh pattern as Instagram.
+  const params = new URLSearchParams({
+    grant_type: 'th_refresh_token',
+    access_token: conn.access_token,
+  })
+  const res = await fetch(`https://graph.threads.net/refresh_access_token?${params.toString()}`)
+  const json = await res.json() as { access_token?: string; expires_in?: number; error_message?: string }
+  if (!res.ok || !json.access_token) {
+    throw new Error(`Threads token refresh failed: ${json.error_message ?? res.status}`)
+  }
+  const newExpiresAt = json.expires_in ? new Date(Date.now() + json.expires_in * 1000).toISOString() : null
+  await adminSupabase
+    .from('platform_connections')
+    .update({ access_token: json.access_token, expires_at: newExpiresAt })
+    .eq('id', conn.id)
+  return json.access_token
+}
+
+// Meta platforms can have multiple connections (e.g. multiple Facebook Pages),
+// so callers pass the specific account_id rather than getting "the" connection.
+export async function getValidMetaToken(
+  platform: 'facebook' | 'instagram' | 'threads',
+  accountId: string
+): Promise<string> {
+  const { data: conn, error } = await adminSupabase
+    .from('platform_connections')
+    .select('id, access_token, expires_at')
+    .eq('platform', platform)
+    .eq('account_id', accountId)
+    .single()
+
+  if (error || !conn) {
+    throw new Error(`No ${platform} connection found for account ${accountId}`)
+  }
+
+  const expiresAt = conn.expires_at ? new Date(conn.expires_at) : null
+  // Refresh proactively well before expiry (Meta long-lived tokens last ~60
+  // days) rather than waiting until they're nearly dead.
+  const needsRefresh = expiresAt ? expiresAt.getTime() - Date.now() < 3 * 24 * 60 * 60 * 1000 : false
+
+  if (!needsRefresh) return conn.access_token
+
+  try {
+    return await refreshMetaToken(platform, conn)
+  } catch (err) {
+    console.error(`[tokens] ${platform} refresh failed, falling back to existing token:`, err)
+    // Fall back to the current token rather than hard-failing the caller —
+    // it may still be valid for a few more days even if refresh failed.
+    return conn.access_token
+  }
+}

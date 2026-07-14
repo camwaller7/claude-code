@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminSupabase } from '@/lib/supabase/admin'
 import { requireApiAuth } from '@/lib/auth/requireApiAuth'
-import { getValidToken } from '@/lib/platform/tokens'
+import { getValidToken, getValidMetaToken } from '@/lib/platform/tokens'
 
 const META_MESSAGING_WINDOW_MS = 24 * 60 * 60 * 1000
 
@@ -39,7 +39,7 @@ async function sendReply(conv: Record<string, unknown>, body: string): Promise<S
 
     const { data: conn } = await adminSupabase
       .from('platform_connections')
-      .select('access_token')
+      .select('access_token, account_id')
       .eq('platform', platform)
       .limit(1)
       .single()
@@ -48,8 +48,15 @@ async function sendReply(conv: Record<string, unknown>, body: string): Promise<S
       return { ok: false, status: 'failed', error: `No ${platform} connection found` }
     }
 
+    let token: string
+    try {
+      token = await getValidMetaToken(platform as 'facebook' | 'instagram', conn.account_id as string)
+    } catch {
+      token = conn.access_token
+    }
+
     const res = await fetch(
-      `https://graph.facebook.com/v21.0/me/messages?access_token=${conn.access_token}`,
+      `https://graph.facebook.com/v21.0/me/messages?access_token=${token}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

@@ -1,6 +1,14 @@
 import { NextResponse } from 'next/server'
+import { timingSafeEqual } from 'crypto'
 import { createServerClient } from '@/lib/supabase/server'
 import { isOwnerEmail } from '@/lib/auth/isOwner'
+
+function safeEqual(a: string, b: string): boolean {
+  const bufA = Buffer.from(a)
+  const bufB = Buffer.from(b)
+  if (bufA.length !== bufB.length) return false
+  return timingSafeEqual(bufA, bufB)
+}
 
 /**
  * Auth guard for API routes. Returns null when the request carries a valid
@@ -17,7 +25,7 @@ export async function requireApiAuth(request?: Request): Promise<NextResponse | 
   const internalSecret = process.env.INTERNAL_API_SECRET
   if (request && internalSecret) {
     const header = request.headers.get('x-internal-secret')
-    if (header && header === internalSecret) return null
+    if (header && safeEqual(header, internalSecret)) return null
   }
 
   if (process.env.MAINTENANCE_MODE === 'true') {

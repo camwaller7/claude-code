@@ -1,6 +1,6 @@
 import { inngest } from './client'
 import { adminSupabase } from '@/lib/supabase/admin'
-import { getValidToken } from '@/lib/platform/tokens'
+import { getValidToken, getValidMetaToken } from '@/lib/platform/tokens'
 import type { Platform } from '@/types'
 
 // ─── Inbox sync (runs every 15 min) ──────────────────────────────────────────
@@ -194,9 +194,10 @@ export const publishPost = inngest.createFunction(
               .limit(1)
               .single()
             if (!conn) throw new Error('No Instagram connection')
+            const token = await getValidMetaToken('instagram', conn.account_id as string)
             const id = await publishToInstagram(
               fullCaption, mediaUrl,
-              conn.access_token as string, conn.account_id as string
+              token, conn.account_id as string
             )
             output.push({ platform, success: true, postId: id })
 
@@ -208,9 +209,10 @@ export const publishPost = inngest.createFunction(
               .limit(1)
               .single()
             if (!conn) throw new Error('No Facebook connection')
+            const token = await getValidMetaToken('facebook', conn.account_id as string)
             const id = await publishToFacebook(
               fullCaption, mediaUrl,
-              conn.access_token as string, conn.account_id as string
+              token, conn.account_id as string
             )
             output.push({ platform, success: true, postId: id })
 
@@ -227,9 +229,10 @@ export const publishPost = inngest.createFunction(
               .limit(1)
               .single()
             if (!conn) throw new Error('No Threads connection')
+            const threadsToken = await getValidMetaToken('threads', conn.account_id as string)
             const id = await publishToThreads(
               fullCaption, mediaUrl,
-              conn.access_token as string, conn.account_id as string
+              threadsToken, conn.account_id as string
             )
             output.push({ platform, success: true, postId: id })
 
@@ -272,6 +275,13 @@ export const publishPost = inngest.createFunction(
           publish_errors: Object.keys(platformErrors).length > 0 ? platformErrors : null,
         })
         .eq('id', postId)
+
+      if (Object.keys(platformErrors).length > 0) {
+        console.error(`[publishPost] post ${postId} had platform failures:`, platformErrors)
+      }
+      if (allFailed) {
+        console.error(`[publishPost] post ${postId} failed on every platform`)
+      }
     })
 
     return { results }

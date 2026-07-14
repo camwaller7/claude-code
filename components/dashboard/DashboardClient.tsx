@@ -33,7 +33,7 @@ function getLast7Days() {
 }
 
 function getShortDay(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('en', { weekday: 'short' })
+  return new Date(dateStr).toLocaleDateString('en-GB', { weekday: 'short' })
 }
 
 const CATEGORY_COLORS: Record<string, string> = {

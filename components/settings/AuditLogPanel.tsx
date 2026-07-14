@@ -43,12 +43,16 @@ const LABELS: Record<string, string> = {
 
 export function AuditLogPanel() {
   const [entries, setEntries] = useState<Entry[] | null>(null)
+  const [error, setError] = useState(false)
 
   useEffect(() => {
     fetch('/api/audit-log')
       .then(r => r.json())
-      .then(data => { if (Array.isArray(data.entries)) setEntries(data.entries) })
-      .catch(() => setEntries([]))
+      .then(data => {
+        if (Array.isArray(data.entries)) setEntries(data.entries)
+        else setError(true)
+      })
+      .catch(() => setError(true))
   }, [])
 
   return (
@@ -58,7 +62,9 @@ export function AuditLogPanel() {
         <p className="text-xs text-muted-foreground">Sign-ins, password changes, and sensitive actions — last 50</p>
       </CardHeader>
       <CardContent>
-        {entries === null ? (
+        {error ? (
+          <p className="text-sm text-destructive">Could not load security activity — try refreshing the page.</p>
+        ) : entries === null ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
         ) : entries.length === 0 ? (
           <p className="text-sm text-muted-foreground">No activity recorded yet.</p>

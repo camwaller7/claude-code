@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { Platform } from '@/types'
+import { formatDate, formatTime } from '@/lib/utils'
 
 const PLATFORMS: { value: Platform; label: string }[] = [
   { value: 'instagram', label: 'Instagram' },
@@ -204,9 +205,9 @@ export function NewPostDialog() {
             />
             {scheduledAt && !isNaN(new Date(scheduledAt).getTime()) && (
               <p className="text-xs text-muted-foreground">
-                Confirms as: {new Date(scheduledAt).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                Confirms as: {formatDate(scheduledAt, { withWeekday: true })}
                 {' at '}
-                {new Date(scheduledAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                {formatTime(scheduledAt)}
               </p>
             )}
           </div>

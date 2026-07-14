@@ -63,6 +63,9 @@ export function NewClientDialog() {
         <DialogHeader>
           <DialogTitle>New Client</DialogTitle>
         </DialogHeader>
+        <p className="text-xs text-muted-foreground -mt-2">
+          This creates a client profile only. To link it to an existing inbox conversation, open the client afterward — a matching conversation will be suggested there.
+        </p>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="name">Name *</Label>

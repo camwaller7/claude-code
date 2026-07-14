@@ -10,12 +10,20 @@ export function cn(...inputs: ClassValue[]) {
  * American and Dec 8 to almost everyone else. Always renders identically
  * regardless of server/browser locale.
  */
-export function formatDate(dateStr: string, opts?: { withTime?: boolean }): string {
+export function formatDate(dateStr: string, opts?: { withTime?: boolean; withWeekday?: boolean }): string {
   const d = new Date(dateStr)
-  const date = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+  const date = d.toLocaleDateString('en-GB', {
+    ...(opts?.withWeekday ? { weekday: 'short' as const } : {}),
+    day: 'numeric', month: 'short', year: 'numeric',
+  })
   if (!opts?.withTime) return date
   const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
   return `${date}, ${time}`
+}
+
+/** Time-only, same fixed-locale rationale as formatDate. */
+export function formatTime(dateStr: string): string {
+  return new Date(dateStr).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
 }
 
 export function relativeTime(dateStr: string): string {

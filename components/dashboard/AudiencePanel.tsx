@@ -21,7 +21,7 @@ export function AudiencePanel({ analytics }: { analytics: ContentAnalytics }) {
   const up7 = f.net_change_7d >= 0
 
   const trendData = f.trend_30d.map(p => ({
-    day: new Date(p.date).toLocaleDateString('en', { day: 'numeric', month: 'short' }),
+    day: new Date(p.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
     followers: p.total,
   }))
 
