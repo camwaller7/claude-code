@@ -15,6 +15,7 @@ interface PlatformConfig {
   connectHref: string | null
   description: string
   manualNote?: string
+  requirementNote?: string
 }
 
 const PLATFORM_CONFIGS: PlatformConfig[] = [
@@ -23,12 +24,14 @@ const PLATFORM_CONFIGS: PlatformConfig[] = [
     platform: 'instagram',
     connectHref: '/api/instagram/connect',
     description: 'Connect your Instagram Business or Creator account to sync DMs and publish content.',
+    requirementNote: 'Requires an Instagram Professional account (Business or Creator). Personal profiles cannot sync DMs. You can switch in the Instagram app under Settings → Account type and tools, and your profile stays publicly visible.',
   },
   {
     label: 'Facebook',
     platform: 'facebook',
     connectHref: '/api/meta/connect',
     description: 'Connect your Facebook Page to sync messages and publish content.',
+    requirementNote: 'Requires a Facebook Page (not a personal profile). During connection, choose the Page you manage and approve all requested permissions.',
   },
   {
     label: 'X (Twitter)',
@@ -75,6 +78,15 @@ export default async function OnboardingPage() {
           <h1 className="text-2xl font-bold">Platform Connections</h1>
           <p className="text-sm text-muted-foreground">Connect your social platforms to start syncing messages and scheduling posts.</p>
         </div>
+        <div className="mb-6 rounded-lg border border-border bg-muted/40 p-4">
+          <h2 className="text-sm font-semibold">Before you connect</h2>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+            <li>Instagram must be a Professional account (Business or Creator). Personal profiles cannot sync DMs. Switching to Creator keeps your profile publicly visible.</li>
+            <li>Facebook syncing works only through a Facebook Page you manage, not a personal profile. Make sure your Page is created and linked to your account first.</li>
+            <li>During connection you will be asked to approve messaging and content permissions. All requested permissions are required for the inbox and publishing to work.</li>
+            <li>Once an account is connected and approved, new messages sync automatically and appear in your inbox.</li>
+          </ul>
+        </div>
         <div className="flex flex-col gap-4">
           {PLATFORM_CONFIGS.map((config) => {
             const connection = connectionsByPlatform.get(config.platform)
@@ -90,6 +102,9 @@ export default async function OnboardingPage() {
                     </Badge>
                   </div>
                   <CardDescription>{config.description}</CardDescription>
+                  {config.requirementNote && (
+                    <p className="mt-1 text-xs text-muted-foreground">{config.requirementNote}</p>
+                  )}
                   {isConnected && connection && (
                     <p className="text-xs text-muted-foreground mt-1">
                       Account: <span className="font-medium">{connection.account_id}</span>
