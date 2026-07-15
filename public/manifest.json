@@ -1,6 +1,6 @@
 {
   "name": "Influencer PA",
-  "short_name": "Creator PA",
+  "short_name": "Influencer PA",
   "description": "Your personal assistant for brand deals, DMs and content scheduling",
   "start_url": "/dashboard",
   "display": "standalone",

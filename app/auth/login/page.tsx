@@ -40,7 +40,7 @@ export default async function LoginPage({ searchParams }: Props) {
             className="text-3xl"
             style={{ fontFamily: 'Georgia, "Times New Roman", serif', fontWeight: 500, letterSpacing: '-0.01em' }}
           >
-            Creator PA
+            Influencer PA
           </h1>
           <p className="text-sm" style={{ color: '#7d746a', maxWidth: '38ch', margin: '0 auto' }}>
             Your inbox, brand deals, clients and content — beautifully kept in one place.
@@ -71,6 +71,14 @@ export default async function LoginPage({ searchParams }: Props) {
 
         <p className="text-center text-xs" style={{ color: '#a89d90' }}>
           First time here? Use a sign-in link to verify your email, then set a password.
+        </p>
+
+        <p className="text-center text-xs" style={{ color: '#a89d90' }}>
+          <a href="/privacy" className="underline">Privacy Policy</a>
+          {' · '}
+          <a href="/terms" className="underline">Terms of Service</a>
+          {' · '}
+          <a href="/data-deletion" className="underline">Data Deletion</a>
         </p>
       </div>
     </div>
