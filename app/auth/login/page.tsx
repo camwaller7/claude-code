@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { LoginForm } from '@/components/auth/LoginForm'
+import { CURRENT_TERMS_VERSION } from '@/lib/auth/requireAuth'
 
 type Props = { searchParams: Promise<{ error?: string }> }
 
@@ -12,7 +13,13 @@ export default async function LoginPage({ searchParams }: Props) {
     const supabase = await createServerClient()
     const { data } = await supabase.auth.getUser()
     if (data.user) {
-      redirectTo = data.user.user_metadata?.has_password === true ? '/dashboard' : '/auth/set-password'
+      if (data.user.user_metadata?.has_password !== true) {
+        redirectTo = '/auth/set-password'
+      } else if (data.user.user_metadata?.terms_accepted_version !== CURRENT_TERMS_VERSION) {
+        redirectTo = '/auth/accept-terms'
+      } else {
+        redirectTo = '/dashboard'
+      }
     }
   } catch (e) {
     console.error('[login] supabase error:', e)

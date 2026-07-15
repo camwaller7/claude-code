@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ShieldAlert, ShieldCheck, KeyRound, Settings2, Briefcase, Link2, Bot } from 'lucide-react'
+import { ShieldAlert, ShieldCheck, KeyRound, Settings2, Briefcase, Link2, Bot, FileCheck } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 
 interface Entry {
@@ -19,6 +19,7 @@ const ICONS: Record<string, React.ElementType> = {
   forbidden_access_attempt: ShieldAlert,
   password_set: KeyRound,
   password_reset: KeyRound,
+  terms_accepted: FileCheck,
   platform_connected: Link2,
   settings_changed: Settings2,
   deal_status_changed: Briefcase,
@@ -33,6 +34,7 @@ const LABELS: Record<string, string> = {
   forbidden_access_attempt: 'Blocked: non-owner tried to access the app',
   password_set: 'Password set',
   password_reset: 'Password reset',
+  terms_accepted: 'Terms of Service & Privacy Policy accepted',
   platform_connected: 'Social platform connected',
   settings_changed: 'Settings changed',
   deal_status_changed: 'Deal status changed (via AI)',

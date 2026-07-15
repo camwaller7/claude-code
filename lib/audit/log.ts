@@ -5,6 +5,7 @@ export type AuditAction =
   | 'sign_in_failed'
   | 'password_set'
   | 'password_reset'
+  | 'terms_accepted'
   | 'forbidden_access_attempt'
   | 'platform_connected'
   | 'settings_changed'
