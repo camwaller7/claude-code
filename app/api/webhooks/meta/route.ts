@@ -38,14 +38,22 @@ interface MetaWebhookPayload {
   entry: Entry[]
 }
 
-function verifySignature(rawBody: string, signatureHeader: string | null): boolean {
-  const secret = process.env.META_APP_SECRET
+function matchesSecret(rawBody: string, received: string, secret: string | undefined): boolean {
   if (!secret) return false
-  if (!signatureHeader?.startsWith('sha256=')) return false
   const expected = createHmac('sha256', secret).update(rawBody).digest('hex')
-  const received = signatureHeader.slice('sha256='.length)
   if (expected.length !== received.length) return false
   return timingSafeEqual(Buffer.from(expected), Buffer.from(received))
+}
+
+function verifySignature(rawBody: string, signatureHeader: string | null): boolean {
+  if (!signatureHeader?.startsWith('sha256=')) return false
+  const received = signatureHeader.slice('sha256='.length)
+  // Facebook Page events are signed with the Meta app secret; Instagram
+  // Login events are signed with the Instagram app secret. Accept either.
+  return (
+    matchesSecret(rawBody, received, process.env.META_APP_SECRET) ||
+    matchesSecret(rawBody, received, process.env.INSTAGRAM_APP_SECRET)
+  )
 }
 
 export async function POST(request: NextRequest) {
