@@ -24,7 +24,8 @@ export default async function InboxPage({ searchParams }: Props) {
 
   if (platform) query = query.eq('platform', platform)
   if (category) query = query.eq('category', category)
-  if (status) query = query.eq('status', status)
+  const effectiveStatus = status ?? 'needs_reply'
+  if (effectiveStatus !== 'all') query = query.eq('status', effectiveStatus)
   if (q) {
     const term = q.replace(/[%_]/g, '')
     query = query.or(`contact_name.ilike.%${term}%,contact_handle.ilike.%${term}%`)
