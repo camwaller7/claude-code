@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import { CURRENT_TERMS_VERSION } from '@/lib/auth/requireAuth'
+import { CURRENT_TERMS_VERSION } from '@/lib/auth/termsVersion'
 
 export function AcceptTermsForm() {
   const [checked, setChecked] = useState(false)
