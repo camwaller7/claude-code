@@ -29,7 +29,7 @@ export function InboxFilters() {
 
   const platform = searchParams.get('platform') ?? 'all'
   const category = searchParams.get('category') ?? 'all'
-  const status = searchParams.get('status') ?? 'all'
+  const status = searchParams.get('status') ?? 'needs_reply'
   const q = searchParams.get('q') ?? ''
   const [search, setSearch] = useState(q)
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -44,7 +44,7 @@ export function InboxFilters() {
 
   function setFilter(key: string, value: string) {
     const params = new URLSearchParams(searchParams.toString())
-    if (value === 'all') {
+    if (value === 'all' && key !== 'status') {
       params.delete(key)
     } else {
       params.set(key, value)
