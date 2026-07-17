@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import Image from 'next/image'
 import { MessageCircle, X, Send, Sparkles, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -10,10 +11,10 @@ interface Message {
 }
 
 const SUGGESTIONS = [
-  "What brand deals need follow-up? 💼",
-  "What's my pipeline worth this month? 💰",
-  "Draft a reply to my latest brand inquiry ✍️",
-  "Which clients are most active? 👥",
+  "What brand deals need follow-up? \ud83d\udcbc",
+  "What's my pipeline worth this month? \ud83d\udcb0",
+  "Draft a reply to my latest brand inquiry \u270d\ufe0f",
+  "Which clients are most active? \ud83d\udc65",
 ]
 
 interface Persona {
@@ -26,7 +27,7 @@ export function AIChat() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const [persona, setPersona] = useState<Persona>({ assistant_name: 'Nova', assistant_emoji: '✨' })
+  const [persona, setPersona] = useState<Persona>({ assistant_name: 'Elle', assistant_emoji: '\u2728' })
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -34,7 +35,7 @@ export function AIChat() {
     fetch('/api/settings')
       .then(r => r.json())
       .then(data => {
-        if (data?.assistant_name) setPersona({ assistant_name: data.assistant_name, assistant_emoji: data.assistant_emoji ?? '✨' })
+        if (data?.assistant_name) setPersona({ assistant_name: data.assistant_name, assistant_emoji: data.assistant_emoji ?? '\u2728' })
       })
       .catch(() => {})
   }, [])
@@ -117,12 +118,14 @@ export function AIChat() {
       <button
         onClick={() => setOpen(o => !o)}
         className={cn(
-          'fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-all duration-200',
+          'fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-all duration-200 overflow-hidden',
           'brand-gradient text-white hover:scale-105 active:scale-95'
         )}
         aria-label="Open AI assistant"
       >
-        {open ? <X className="h-5 w-5" /> : <span className="text-xl">{persona.assistant_emoji}</span>}
+        {open ? <X className="h-5 w-5" /> : (
+          <Image src="/corvelle-icon.png" alt={persona.assistant_name} width={40} height={40} className="rounded-full" />
+        )}
       </button>
 
       {/* Chat panel */}
@@ -130,8 +133,8 @@ export function AIChat() {
         <div className="fixed bottom-24 right-6 z-50 flex w-[360px] max-w-[calc(100vw-2rem)] flex-col rounded-2xl border bg-background shadow-2xl" style={{ height: 520 }}>
           {/* Header */}
           <div className="flex items-center gap-3 rounded-t-2xl brand-gradient px-4 py-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-base">
-              {persona.assistant_emoji}
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 overflow-hidden">
+              <Image src="/corvelle-icon.png" alt={persona.assistant_name} width={32} height={32} />
             </div>
             <div>
               <p className="text-sm font-semibold text-white">{persona.assistant_name}</p>
