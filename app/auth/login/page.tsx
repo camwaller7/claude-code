@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { redirect } from 'next/navigation'
+import Image from 'next/image'
 import { createServerClient } from '@/lib/supabase/server'
 import { LoginForm } from '@/components/auth/LoginForm'
 import { CURRENT_TERMS_VERSION } from '@/lib/auth/requireAuth'
@@ -37,17 +38,18 @@ export default async function LoginPage({ searchParams }: Props) {
     >
       <div className="w-full max-w-sm flex flex-col gap-8">
         <div className="text-center flex flex-col gap-3">
-          <span
-            className="mx-auto flex h-14 w-14 items-center justify-center rounded-full text-2xl"
-            style={{ background: '#3f5c50', color: '#f7f2ec' }}
-          >
-            ✦
-          </span>
+          <Image
+            src="/corvelle-icon.png"
+            alt="Corvelle"
+            width={56}
+            height={56}
+            className="mx-auto rounded-2xl"
+          />
           <h1
             className="text-3xl"
             style={{ fontFamily: 'Georgia, "Times New Roman", serif', fontWeight: 500, letterSpacing: '-0.01em' }}
           >
-            Influencer PA
+            Corvelle
           </h1>
           <p className="text-sm" style={{ color: '#7d746a', maxWidth: '38ch', margin: '0 auto' }}>
             Your inbox, brand deals, clients and content — beautifully kept in one place.
