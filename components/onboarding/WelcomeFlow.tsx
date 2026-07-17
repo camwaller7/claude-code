@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 const STEPS = [
   {
     emoji: '👋',
-    title: 'Welcome to Influencer PA!',
+    title: 'Welcome to Corvelle!',
     body: 'One place for your DMs, brand deals, clients and content — with an AI assistant that does the busy work for you.',
   },
   {
