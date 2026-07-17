@@ -1,5 +1,5 @@
 export const metadata = {
-  title: 'Terms of Service — Influencer PA',
+  title: 'Terms of Service — Corvelle',
 }
 
 export default function TermsPage() {
@@ -9,7 +9,7 @@ export default function TermsPage() {
       <p className="mb-8 text-muted-foreground">Effective date: January 1, 2026 · Last updated: January 1, 2026</p>
 
       <p className="mb-4">
-        These Terms of Service (&quot;Terms&quot;) govern access to and use of Influencer PA (&quot;the App&quot;).
+        These Terms of Service (&quot;Terms&quot;) govern access to and use of Corvelle (&quot;the App&quot;).
         By accessing or using the App, you agree to be bound by these Terms and by the{' '}
         <a href="/privacy" className="underline">Privacy Policy</a>, which is incorporated by
         reference. If you do not agree, do not use the App.
@@ -17,7 +17,7 @@ export default function TermsPage() {
 
       <h2 className="mb-2 mt-10 text-lg font-semibold">1. About the App</h2>
       <p className="mb-4">
-        Influencer PA is a private productivity tool built and operated by its owner for personal
+        Corvelle is a private productivity tool built and operated by its owner for personal
         use managing their own social media accounts, inbox, brand deals, client relationships,
         and content scheduling. The App is not offered as a public service, does not accept
         public account sign-up, and access is restricted to its owner.
