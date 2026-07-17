@@ -29,7 +29,7 @@ export default async function SettingsPage() {
       <AccountPanel />
       <LookSettings initialTheme={settings?.brand_theme ?? 'studio'} />
       <AssistantSettings
-        initialName={settings?.assistant_name ?? 'Nova'}
+        initialName={settings?.assistant_name ?? 'Elle'}
         initialEmoji={settings?.assistant_emoji ?? '✨'}
         initialVibe={settings?.assistant_vibe ?? 'friendly'}
       />
