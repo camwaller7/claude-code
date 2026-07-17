@@ -9,10 +9,10 @@ import { BrandThemeProvider } from '@/components/layout/BrandThemeProvider'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Influencer PA',
+  title: 'Corvelle',
   description: 'Your personal assistant for managing brand deals, DMs, and content scheduling',
   manifest: '/manifest.json',
-  icons: { icon: '/icon.svg', apple: '/icon.svg' },
+  icons: { icon: '/corvelle-icon.png', apple: '/corvelle-icon.png' },
 }
 
 export const viewport = {
