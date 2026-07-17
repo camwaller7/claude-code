@@ -288,3 +288,25 @@ export const publishPost = inngest.createFunction(
     return { results }
   }
 )
+
+
+// ─── Analytics sync (runs daily) ──────────────────────────────────────────────
+// Snapshots follower counts + refreshes per-post insights so the Audience
+// dashboard reflects real growth instead of demo data.
+
+export const syncAnalytics = inngest.createFunction(
+  {
+    id: 'sync-analytics',
+    triggers: [
+      { event: 'analytics/sync.requested' },
+      { cron: '0 6 * * *' },
+    ],
+    retries: 3,
+  },
+  async ({ step }) => {
+    await step.run('sync-instagram-insights', async () => {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/instagram/insights`, { method: 'POST', headers: { 'x-internal-secret': process.env.INTERNAL_API_SECRET ?? '' } })
+      if (!res.ok) throw new Error(`Instagram insights sync failed: ${res.status} ${await res.text().catch(() => '')}`)
+    })
+  }
+)
