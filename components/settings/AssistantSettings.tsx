@@ -35,7 +35,7 @@ export function AssistantSettings({ initialName, initialEmoji, initialVibe }: Pr
       const res = await fetch('/api/settings', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ assistant_name: name.trim() || 'Nova', assistant_emoji: emoji, assistant_vibe: vibe }),
+        body: JSON.stringify({ assistant_name: name.trim() || 'Elle', assistant_emoji: emoji, assistant_vibe: vibe }),
       })
       if (!res.ok) {
         const data = await res.json().catch(() => null) as { error?: string } | null
@@ -63,7 +63,7 @@ export function AssistantSettings({ initialName, initialEmoji, initialVibe }: Pr
             {emoji}
           </div>
           <div>
-            <p className="font-semibold text-white">{name.trim() || 'Nova'}</p>
+            <p className="font-semibold text-white">{name.trim() || 'Elle'}</p>
             <p className="text-xs text-white/70">
               {VIBES.find(v => v.value === vibe)?.desc}
             </p>
@@ -76,7 +76,7 @@ export function AssistantSettings({ initialName, initialEmoji, initialVibe }: Pr
             id="assistant-name"
             value={name}
             onChange={e => { setName(e.target.value); setSaved(false) }}
-            placeholder="Nova"
+            placeholder="Elle"
             maxLength={20}
           />
         </div>
