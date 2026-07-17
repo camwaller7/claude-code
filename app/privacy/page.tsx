@@ -1,5 +1,5 @@
 export const metadata = {
-  title: 'Privacy Policy — Influencer PA',
+  title: 'Privacy Policy — Corvelle',
 }
 
 export default function PrivacyPolicyPage() {
@@ -9,20 +9,20 @@ export default function PrivacyPolicyPage() {
       <p className="mb-8 text-muted-foreground">Effective date: January 1, 2026 · Last updated: January 1, 2026</p>
 
       <p className="mb-4">
-        This Privacy Policy explains how Influencer PA (&quot;the App,&quot; &quot;we,&quot; &quot;us&quot;) collects,
+        This Privacy Policy explains how Corvelle (&quot;the App,&quot; &quot;we,&quot; &quot;us&quot;) collects,
         uses, stores, and protects information when the App is used to connect to and manage
         social media and email accounts. It applies to the App&apos;s owner and to any individual whose
         information passes through the App as a result of messaging or interacting with the
         owner&apos;s connected accounts (for example, someone who sends the owner a direct message).
       </p>
       <p className="mb-4">
-        Influencer PA is a single-owner application. It is not a public service, does not accept
+        Corvelle is a single-owner application. It is not a public service, does not accept
         public account sign-up, and is not intended for use by anyone other than its owner.
       </p>
 
       <h2 className="mb-2 mt-10 text-lg font-semibold">1. Who we are</h2>
       <p className="mb-4">
-        Influencer PA is operated by an individual creator. For any question about this policy or
+        Corvelle is operated by an individual creator. For any question about this policy or
         the data described in it, contact: <strong>cambswaller7@gmail.com</strong>.
       </p>
 
