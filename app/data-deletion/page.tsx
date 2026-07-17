@@ -1,5 +1,5 @@
 export const metadata = {
-  title: 'Data Deletion Instructions — Influencer PA',
+  title: 'Data Deletion Instructions — Corvelle',
 }
 
 export default function DataDeletionPage() {
@@ -9,7 +9,7 @@ export default function DataDeletionPage() {
       <p className="mb-8 text-muted-foreground">Last updated: 2026</p>
 
       <p className="mb-4">
-        Influencer PA is a single-owner application with no public sign-up — the only account
+        Corvelle is a single-owner application with no public sign-up — the only account
         with access to the App, and the only data it stores, belongs to its owner. If you are the
         owner and want to delete data associated with a connected platform account, or if you
         believe your data was connected to this App in error, use either method below.
@@ -23,19 +23,19 @@ export default function DataDeletionPage() {
       <ul className="mb-4 list-disc space-y-1 pl-6">
         <li>
           <strong>Instagram / Facebook:</strong> Facebook Settings → Apps and Websites → find
-          &quot;Influencer PA&quot; → Remove.
+          &quot;Corvelle&quot; → Remove.
         </li>
         <li>
-          <strong>Threads:</strong> Threads Settings → Apps and Websites → find &quot;Influencer PA&quot; →
+          <strong>Threads:</strong> Threads Settings → Apps and Websites → find &quot;Corvelle&quot; →
           Remove.
         </li>
         <li>
           <strong>X (Twitter):</strong> X Settings → Security and account access → Apps and
-          sessions → find &quot;Influencer PA&quot; → Revoke access.
+          sessions → find &quot;Corvelle&quot; → Revoke access.
         </li>
         <li>
           <strong>Gmail:</strong> Google Account → Security → Third-party apps with account
-          access → find &quot;Influencer PA&quot; → Remove access.
+          access → find &quot;Corvelle&quot; → Remove access.
         </li>
       </ul>
       <p className="mb-4">
