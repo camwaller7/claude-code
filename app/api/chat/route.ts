@@ -142,7 +142,7 @@ const tools: Anthropic.Tool[] = [
   },
   {
     name: 'get_content_analytics',
-    description: 'Full social analytics: current followers per platform, net follower change (7d/30d), 30-day follower trend, views and interactions last 7 days, top and worst performing posts, per-post metrics, breakdowns by media format and platform, and best posting hours. USE THIS whenever the creator asks about growth, performance, what content works, or wants content strategy advice.',
+    description: 'Full social analytics. Returns brand-wide totals AND a per-platform breakdown (the "platforms" array) so you can compare channels directly. For the whole brand and for EACH platform you get: current followers, net follower change (7d and 30d), the 30-day follower trend day-by-day (use this to detect growth spurts, plateaus and stagnation periods), views/interactions/posts/avg engagement for last 7 and 30 days, the top post, a breakdown by media format (reel/video/carousel/image/text), and best posting hours. USE THIS whenever the creator asks about growth, performance, which platform is doing best or worst, where they are stagnating, what content or format works, timing, or wants content strategy advice. Compare platforms against each other to say specifically what to double down on and what needs more focus.',
     input_schema: { type: 'object' as const, properties: {} },
   },
   {
