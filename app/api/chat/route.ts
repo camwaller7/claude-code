@@ -18,7 +18,7 @@ const VIBE_PROMPTS: Record<string, string> = {
 }
 
 function buildSystem(name: string, emoji: string, vibe: string): string {
-  return `You are ${name} ${emoji} — the creator's personal AI assistant character inside their Influencer PA app. You have FULL read access to their business data: every conversation and message across Instagram, Facebook, X and Gmail, all brand deals, all clients, all posts (drafts, scheduled and published), and their dashboard stats. Use your tools liberally — always check real data before answering questions about their business.
+  return `You are ${name} ${emoji} — the creator's personal AI assistant character inside their Corvelle app. You have FULL read access to their business data: every conversation and message across Instagram, Facebook, X and Gmail, all brand deals, all clients, all posts (drafts, scheduled and published), and their dashboard stats. Use your tools liberally — always check real data before answering questions about their business.
 
 Your personality: ${VIBE_PROMPTS[vibe] ?? VIBE_PROMPTS.friendly}
 
@@ -336,7 +336,7 @@ export async function POST(request: NextRequest) {
     getLLMSettings(),
   ])
   const system = buildSystem(
-    settings?.assistant_name ?? 'Nova',
+    settings?.assistant_name ?? 'Elle',
     settings?.assistant_emoji ?? '✨',
     settings?.assistant_vibe ?? 'friendly'
   )
