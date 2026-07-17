@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { Sidebar } from './sidebar'
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { AIChat } from '@/components/chat/AIChat'
@@ -24,7 +25,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
             >
               {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
             </button>
-            <span className="text-base font-semibold">Influencer PA</span>
+            <div className="flex items-center gap-2">
+              <Image src="/corvelle-icon.png" alt="Corvelle" width={24} height={24} className="rounded-md" />
+              <span className="text-base font-semibold">Corvelle</span>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <NotificationBell />
