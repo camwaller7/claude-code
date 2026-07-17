@@ -6,6 +6,7 @@ import { requireApiAuth } from '@/lib/auth/requireApiAuth'
 import { encryptToken } from '@/lib/crypto/tokenCipher'
 import { META_GRAPH_VERSION } from '@/lib/platform/metaVersion'
 import { triageMessage } from '@/lib/anthropic/triage'
+import { inngest } from '@/lib/inngest/client'
 
 export async function GET(request: NextRequest) {
   const unauthorized = await requireApiAuth(request)
@@ -178,6 +179,12 @@ export async function GET(request: NextRequest) {
       } catch (err) {
               console.error('[instagram/callback] conversation backfill failed:', err)
       }
+
+  // Kick off an initial analytics sync so the dashboard has real follower/post
+  // stats right after connecting, instead of waiting for the daily cron.
+  await inngest.send({ name: 'analytics/sync.requested', data: { platform: 'instagram' } }).catch((err) => {
+    console.error('[instagram/callback] failed to enqueue analytics sync:', err)
+  })
 
   await auditLog('platform_connected', { platform: 'instagram' })
 
