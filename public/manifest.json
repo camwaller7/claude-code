@@ -1,6 +1,6 @@
 {
-  "name": "Influencer PA",
-  "short_name": "Influencer PA",
+  "name": "Corvelle",
+  "short_name": "Corvelle",
   "description": "Your personal assistant for brand deals, DMs and content scheduling",
   "start_url": "/dashboard",
   "display": "standalone",
@@ -8,9 +8,9 @@
   "theme_color": "#3f5c50",
   "icons": [
     {
-      "src": "/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "/corvelle-icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]
