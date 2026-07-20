@@ -31,6 +31,7 @@ interface MessagingEvent {
 interface Entry {
   id: string
   messaging?: MessagingEvent[]
+  changes?: unknown[]
 }
 
 interface MetaWebhookPayload {
@@ -63,17 +64,39 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
   }
 
+  // TEMPORARY DIAGNOSTIC — remove once inbox sync is confirmed working.
+  // Logs the exact payload Meta delivers so we can see whether real inbound
+  // messages arrive under entry.messaging[] (as this code expects) or under
+  // entry.changes[] / some other shape (which would be silently ignored).
+  console.log('[meta-webhook-debug] raw payload:', rawBody)
+
   try {
     const payload = JSON.parse(rawBody) as MetaWebhookPayload
     const platform: Platform = payload.object === 'instagram' ? 'instagram' : 'facebook'
 
+    console.log('[meta-webhook-debug] object:', payload.object, '| entries:', (payload.entry ?? []).length)
     for (const entry of payload.entry ?? []) {
+      console.log(
+        '[meta-webhook-debug] entry.id:', entry.id,
+        '| has messaging:', Array.isArray(entry.messaging), '(', entry.messaging?.length ?? 0, ')',
+        '| has changes:', Array.isArray(entry.changes), '(', entry.changes?.length ?? 0, ')'
+      )
+      if (entry.changes?.length) {
+        console.log('[meta-webhook-debug] entry.changes:', JSON.stringify(entry.changes))
+      }
       for (const event of entry.messaging ?? []) {
         try {
           // Only handle real inbound text messages — skip echoes, read
           // receipts, delivery confirmations, postbacks, attachments-only
-          if (!event.message?.text || event.message.is_echo) continue
-          if (event.sender.id === entry.id) continue
+          if (!event.message?.text || event.message.is_echo) {
+            console.log('[meta-webhook-debug] skipped event — no text or is_echo. keys:', JSON.stringify(Object.keys(event)), '| message:', JSON.stringify(event.message ?? null))
+            continue
+          }
+          if (event.sender.id === entry.id) {
+            console.log('[meta-webhook-debug] skipped event — sender.id === entry.id (self/outbound echo)')
+            continue
+          }
+          console.log('[meta-webhook-debug] ACCEPTED inbound message from', event.sender.id)
 
           const { data: conv } = await adminSupabase
             .from('conversations')
