@@ -12,8 +12,15 @@ export async function GET(request: NextRequest) {
   const cookieStore = await cookies()
   cookieStore.set('meta_oauth_state', state, {
     httpOnly: true,
+    // OAuth redirects back as a top-level GET, so lax is required for the
+    // cookie to be sent. Mark secure in production (the app is served over
+    // HTTPS) while keeping local http dev working.
     sameSite: 'lax',
-    maxAge: 600,
+    secure: process.env.NODE_ENV === 'production',
+    // The consent step can take several minutes (Page picker, permission
+    // review, occasionally a re-login/2FA). A short 10-minute window meant a
+    // slow approval failed with "Invalid state"; 30 minutes is comfortable.
+    maxAge: 1800,
     path: '/',
   })
 
