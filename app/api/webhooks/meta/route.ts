@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { adminSupabase } from '@/lib/supabase/admin'
 import { triageMessage } from '@/lib/anthropic/triage'
+import { getValidMetaToken } from '@/lib/platform/tokens'
+import { decryptToken } from '@/lib/crypto/tokenCipher'
+import { META_GRAPH_VERSION } from '@/lib/platform/metaVersion'
 import type { Platform } from '@/types'
 
 export async function GET(request: NextRequest) {
@@ -57,6 +60,67 @@ function verifySignature(rawBody: string, signatureHeader: string | null): boole
   )
 }
 
+// The webhook payload only carries the sender's numeric ID (PSID/IGSID), not a
+// display name — so without this the inbox shows a raw number as the contact.
+// Resolve a human-readable name/handle via the Graph API using the connected
+// Page/IG token. Falls back to the raw ID on any failure so ingestion never
+// breaks and the NOT NULL contact_name/contact_handle columns stay satisfied.
+async function resolveMetaContact(
+  platform: Platform,
+  pageId: string,
+  senderId: string
+): Promise<{ name: string; handle: string }> {
+  const fallback = { name: senderId, handle: senderId }
+  if (platform !== 'facebook' && platform !== 'instagram') return fallback
+
+  try {
+    // Prefer the connection whose account_id matches the Page/IG account that
+    // received the message; fall back to any connection for this platform.
+    let { data: conn } = await adminSupabase
+      .from('platform_connections')
+      .select('access_token, account_id')
+      .eq('platform', platform)
+      .eq('account_id', pageId)
+      .maybeSingle()
+
+    if (!conn) {
+      const anyConn = await adminSupabase
+        .from('platform_connections')
+        .select('access_token, account_id')
+        .eq('platform', platform)
+        .limit(1)
+        .maybeSingle()
+      conn = anyConn.data
+    }
+    if (!conn) return fallback
+
+    let token: string | null
+    try {
+      token = await getValidMetaToken(platform, conn.account_id)
+    } catch {
+      token = decryptToken(conn.access_token)
+    }
+    if (!token) return fallback
+
+    const fields = platform === 'instagram' ? 'name,username' : 'name'
+    const res = await fetch(
+      `https://graph.facebook.com/${META_GRAPH_VERSION}/${senderId}?fields=${fields}&access_token=${token}`
+    )
+    const data = (await res.json().catch(() => ({}))) as {
+      name?: string
+      username?: string
+      error?: { message: string }
+    }
+    if (data.error) return fallback
+
+    const name = data.name ?? data.username ?? senderId
+    const handle = data.username ? `@${data.username}` : senderId
+    return { name, handle }
+  } catch {
+    return fallback
+  }
+}
+
 export async function POST(request: NextRequest) {
   const rawBody = await request.text()
 
@@ -98,14 +162,15 @@ export async function POST(request: NextRequest) {
           }
           console.log('[meta-webhook-debug] ACCEPTED inbound message from', event.sender.id)
 
+          const contact = await resolveMetaContact(platform, entry.id, event.sender.id)
           const { data: conv } = await adminSupabase
             .from('conversations')
             .upsert(
               {
                 platform,
                 external_thread_id: event.sender.id,
-                contact_name: event.sender.id,
-                contact_handle: event.sender.id,
+                contact_name: contact.name,
+                contact_handle: contact.handle,
                 status: 'needs_reply',
                 last_message_at: new Date(event.timestamp).toISOString(),
               },
