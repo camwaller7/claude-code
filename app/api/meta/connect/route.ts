@@ -20,10 +20,23 @@ export async function GET(request: NextRequest) {
   const params = new URLSearchParams({
     client_id: process.env.META_APP_ID!,
     redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/meta/callback`,
-    scope: 'pages_show_list,pages_messaging,pages_read_engagement,pages_manage_posts',
     response_type: 'code',
     state,
   })
+
+  // Facebook Login for Business apps require a dashboard "configuration" and
+  // the OAuth request must carry its config_id — the configuration defines
+  // which permissions and assets (Pages) are requested. Sending classic
+  // `scope` params to a business-login dialog with no config makes Facebook
+  // silently return access_denied after the user clicks through. When a
+  // config id is set we use it; otherwise fall back to classic scope-based
+  // Facebook Login so this keeps working for non-business-login apps.
+  const configId = process.env.META_LOGIN_CONFIG_ID
+  if (configId) {
+    params.set('config_id', configId)
+  } else {
+    params.set('scope', 'pages_show_list,pages_messaging,pages_read_engagement,pages_manage_posts')
+  }
 
   const url = `https://www.facebook.com/v21.0/dialog/oauth?${params.toString()}`
   return NextResponse.redirect(url)
