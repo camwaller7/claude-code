@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createHmac } from 'crypto'
 import { adminSupabase } from '@/lib/supabase/admin'
 import { requireApiAuth } from '@/lib/auth/requireApiAuth'
 import { getValidToken, getValidMetaToken } from '@/lib/platform/tokens'
@@ -91,6 +92,18 @@ async function sendReply(conv: Record<string, unknown>, body: string): Promise<S
       form.set(key, typeof value === 'string' ? value : JSON.stringify(value))
     }
     form.set('access_token', token)
+
+    // If the app has "Require app secret proof for server API calls" enabled
+    // (App Settings -> Advanced -> Security), every server-side Graph call must
+    // include appsecret_proof = HMAC-SHA256(access_token, app_secret). Graph
+    // API Explorer adds this automatically, which is why the identical call
+    // succeeds there but the server got a bare OAuthException code 1. Add it.
+    const appSecret = platform === 'instagram'
+      ? (process.env.INSTAGRAM_APP_SECRET ?? process.env.META_APP_SECRET)
+      : process.env.META_APP_SECRET
+    if (appSecret) {
+      form.set('appsecret_proof', createHmac('sha256', appSecret).update(token).digest('hex'))
+    }
 
     const res = await fetch(
       `https://graph.facebook.com/${META_GRAPH_VERSION}/${conn.account_id}/messages`,
