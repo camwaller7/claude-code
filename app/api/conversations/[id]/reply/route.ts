@@ -50,11 +50,18 @@ async function sendReply(conv: Record<string, unknown>, body: string): Promise<S
       return { ok: false, status: 'failed', error: `No ${platform} connection found` }
     }
 
-    let token: string
+    let rawToken: string
     try {
-      token = await getValidMetaToken(platform as 'facebook' | 'instagram', conn.account_id as string)
+      rawToken = await getValidMetaToken(platform as 'facebook' | 'instagram', conn.account_id as string)
     } catch {
-      token = decryptToken(conn.access_token as string)!
+      rawToken = decryptToken(conn.access_token as string)!
+    }
+    // A token pasted into a SQL editor (or otherwise stored by hand) often
+    // carries a trailing newline/space; sent as a query param that becomes an
+    // invalid token and Meta returns a bare "unknown error" (code 1). Trim it.
+    const token = rawToken.trim()
+    if (token.length !== rawToken.length) {
+      console.error('[reply-debug] stored token had surrounding whitespace — trimmed', rawToken.length, '->', token.length)
     }
 
     // Post to the specific Page/IG account id rather than `/me`. With a Page
@@ -98,6 +105,7 @@ async function sendReply(conv: Record<string, unknown>, body: string): Promise<S
         '[reply-debug] Meta send failed. status:', res.status,
         '| version:', META_GRAPH_VERSION,
         '| endpoint:', `${conn.account_id}/messages`,
+        '| tokenLen:', token.length,
         '| payload:', JSON.stringify(sendPayload),
         '| raw:', rawResponse
       )
