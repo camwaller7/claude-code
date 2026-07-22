@@ -105,6 +105,19 @@ async function sendReply(conv: Record<string, unknown>, body: string): Promise<S
       form.set('appsecret_proof', createHmac('sha256', appSecret).update(token).digest('hex'))
     }
 
+    // TEMPORARY DIAGNOSTIC — prove whether the stored token authenticates for a
+    // trivial read at all. If this GET succeeds the token is valid server-side
+    // and the problem is send-specific; if it fails with 190/OAuthException the
+    // stored token itself is the problem and must be re-stored.
+    try {
+      const selfTest = await fetch(
+        `https://graph.facebook.com/${META_GRAPH_VERSION}/${conn.account_id}?fields=name&access_token=${encodeURIComponent(token)}`
+      )
+      console.error('[reply-debug] token self-test GET status', selfTest.status, '| body', await selfTest.text())
+    } catch (selfTestErr) {
+      console.error('[reply-debug] token self-test threw', selfTestErr)
+    }
+
     const res = await fetch(
       `https://graph.facebook.com/${META_GRAPH_VERSION}/${conn.account_id}/messages`,
       { method: 'POST', body: form }
