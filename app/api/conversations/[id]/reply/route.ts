@@ -61,15 +61,24 @@ async function sendReply(conv: Record<string, unknown>, body: string): Promise<S
     // token `/me` resolves to the Page, but if the wrong token is stored `/me`
     // fails with a confusing "object 'me' does not exist" error — addressing
     // the account explicitly is unambiguous and works for both platforms.
+    // The Messenger Send API requires messaging_type; omitting it triggers a
+    // generic "An unknown error has occurred" (OAuthException code 1).
+    // RESPONSE is correct for a normal reply inside the 24-hour window (which
+    // we've already enforced above). Instagram's send API doesn't use it.
+    const sendPayload: Record<string, unknown> = {
+      recipient: { id: conv.external_thread_id },
+      message: { text: body },
+    }
+    if (platform === 'facebook') {
+      sendPayload.messaging_type = 'RESPONSE'
+    }
+
     const res = await fetch(
       `https://graph.facebook.com/${META_GRAPH_VERSION}/${conn.account_id}/messages?access_token=${token}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          recipient: { id: conv.external_thread_id },
-          message: { text: body },
-        }),
+        body: JSON.stringify(sendPayload),
       }
     )
     const data = await res.json().catch(() => ({})) as {
