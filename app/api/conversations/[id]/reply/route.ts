@@ -64,14 +64,11 @@ async function sendReply(conv: Record<string, unknown>, body: string): Promise<S
       console.error('[reply-debug] stored token had surrounding whitespace — trimmed', rawToken.length, '->', token.length)
     }
 
-    // Post to the specific Page/IG account id rather than `/me`. With a Page
-    // token `/me` resolves to the Page, but if the wrong token is stored `/me`
-    // fails with a confusing "object 'me' does not exist" error — addressing
-    // the account explicitly is unambiguous and works for both platforms.
-    // The Messenger Send API requires messaging_type; omitting it triggers a
-    // generic "An unknown error has occurred" (OAuthException code 1).
-    // RESPONSE is correct for a normal reply inside the 24-hour window (which
-    // we've already enforced above). Instagram's send API doesn't use it.
+    // The token self-test GET (all params in the query string) returns 200, but
+    // every POST variant so far — JSON body, form body, with/without
+    // appsecret_proof — fails with a bare OAuthException code 1, while the
+    // byte-identical Explorer POST succeeds. Mirror the working GET as closely
+    // as possible: pass EVERY param in the query string and send no body.
     const sendPayload: Record<string, unknown> = {
       recipient: { id: conv.external_thread_id },
       message: { text: body },
@@ -80,26 +77,15 @@ async function sendReply(conv: Record<string, unknown>, body: string): Promise<S
       sendPayload.messaging_type = 'RESPONSE'
     }
 
-    // Send as application/x-www-form-urlencoded with the nested objects as JSON
-    // strings — the classic, widely-proven Send API format that Graph API
-    // Explorer uses under the hood. A raw application/json body was being
-    // rejected with a bare OAuthException code 1 despite an identical payload;
-    // this also url-encodes the access_token safely instead of interpolating
-    // it into the query string.
-    // Match the proven-working request exactly: the token self-test GET (query
-    // param token, no appsecret_proof) succeeds, and so does the identical
-    // Explorer POST. "Require app secret proof" is confirmed OFF, so sending an
-    // appsecret_proof only risks rejection if META_APP_SECRET is wrong — drop
-    // it. Token goes in the query param like the working GET; the message
-    // fields go in a form-encoded body.
-    const form = new URLSearchParams()
+    const qs = new URLSearchParams()
     for (const [key, value] of Object.entries(sendPayload)) {
-      form.set(key, typeof value === 'string' ? value : JSON.stringify(value))
+      qs.set(key, typeof value === 'string' ? value : JSON.stringify(value))
     }
+    qs.set('access_token', token)
 
     const res = await fetch(
-      `https://graph.facebook.com/${META_GRAPH_VERSION}/${conn.account_id}/messages?access_token=${encodeURIComponent(token)}`,
-      { method: 'POST', body: form }
+      `https://graph.facebook.com/${META_GRAPH_VERSION}/${conn.account_id}/messages?${qs.toString()}`,
+      { method: 'POST' }
     )
     // TEMPORARY DIAGNOSTIC — read the full raw body; the generic code 1 error
     // hides its real cause in error_data/error_user_msg, which JSON-picking
