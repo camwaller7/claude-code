@@ -57,8 +57,12 @@ async function sendReply(conv: Record<string, unknown>, body: string): Promise<S
       token = decryptToken(conn.access_token as string)!
     }
 
+    // Post to the specific Page/IG account id rather than `/me`. With a Page
+    // token `/me` resolves to the Page, but if the wrong token is stored `/me`
+    // fails with a confusing "object 'me' does not exist" error — addressing
+    // the account explicitly is unambiguous and works for both platforms.
     const res = await fetch(
-      `https://graph.facebook.com/${META_GRAPH_VERSION}/me/messages?access_token=${token}`,
+      `https://graph.facebook.com/${META_GRAPH_VERSION}/${conn.account_id}/messages?access_token=${token}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
