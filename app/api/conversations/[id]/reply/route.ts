@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createHmac } from 'crypto'
 import { adminSupabase } from '@/lib/supabase/admin'
 import { requireApiAuth } from '@/lib/auth/requireApiAuth'
 import { getValidToken, getValidMetaToken } from '@/lib/platform/tokens'
@@ -87,39 +86,19 @@ async function sendReply(conv: Record<string, unknown>, body: string): Promise<S
     // rejected with a bare OAuthException code 1 despite an identical payload;
     // this also url-encodes the access_token safely instead of interpolating
     // it into the query string.
+    // Match the proven-working request exactly: the token self-test GET (query
+    // param token, no appsecret_proof) succeeds, and so does the identical
+    // Explorer POST. "Require app secret proof" is confirmed OFF, so sending an
+    // appsecret_proof only risks rejection if META_APP_SECRET is wrong — drop
+    // it. Token goes in the query param like the working GET; the message
+    // fields go in a form-encoded body.
     const form = new URLSearchParams()
     for (const [key, value] of Object.entries(sendPayload)) {
       form.set(key, typeof value === 'string' ? value : JSON.stringify(value))
     }
-    form.set('access_token', token)
-
-    // If the app has "Require app secret proof for server API calls" enabled
-    // (App Settings -> Advanced -> Security), every server-side Graph call must
-    // include appsecret_proof = HMAC-SHA256(access_token, app_secret). Graph
-    // API Explorer adds this automatically, which is why the identical call
-    // succeeds there but the server got a bare OAuthException code 1. Add it.
-    const appSecret = platform === 'instagram'
-      ? (process.env.INSTAGRAM_APP_SECRET ?? process.env.META_APP_SECRET)
-      : process.env.META_APP_SECRET
-    if (appSecret) {
-      form.set('appsecret_proof', createHmac('sha256', appSecret).update(token).digest('hex'))
-    }
-
-    // TEMPORARY DIAGNOSTIC — prove whether the stored token authenticates for a
-    // trivial read at all. If this GET succeeds the token is valid server-side
-    // and the problem is send-specific; if it fails with 190/OAuthException the
-    // stored token itself is the problem and must be re-stored.
-    try {
-      const selfTest = await fetch(
-        `https://graph.facebook.com/${META_GRAPH_VERSION}/${conn.account_id}?fields=name&access_token=${encodeURIComponent(token)}`
-      )
-      console.error('[reply-debug] token self-test GET status', selfTest.status, '| body', await selfTest.text())
-    } catch (selfTestErr) {
-      console.error('[reply-debug] token self-test threw', selfTestErr)
-    }
 
     const res = await fetch(
-      `https://graph.facebook.com/${META_GRAPH_VERSION}/${conn.account_id}/messages`,
+      `https://graph.facebook.com/${META_GRAPH_VERSION}/${conn.account_id}/messages?access_token=${encodeURIComponent(token)}`,
       { method: 'POST', body: form }
     )
     // TEMPORARY DIAGNOSTIC — read the full raw body; the generic code 1 error
