@@ -102,18 +102,24 @@ async function resolveMetaContact(
     }
     if (!token) return fallback
 
-    const fields = platform === 'instagram' ? 'name,username' : 'name'
+    // Facebook messaging users (PSIDs) expose first_name/last_name, not a
+    // single `name` field; Instagram messaging users (IGSIDs) expose
+    // name/username. Request the right fields per platform.
+    const fields = platform === 'instagram' ? 'name,username' : 'first_name,last_name'
     const res = await fetch(
       `https://graph.facebook.com/${META_GRAPH_VERSION}/${senderId}?fields=${fields}&access_token=${token}`
     )
     const data = (await res.json().catch(() => ({}))) as {
       name?: string
       username?: string
+      first_name?: string
+      last_name?: string
       error?: { message: string }
     }
     if (data.error) return fallback
 
-    const name = data.name ?? data.username ?? senderId
+    const fullName = [data.first_name, data.last_name].filter(Boolean).join(' ').trim()
+    const name = data.name || fullName || data.username || senderId
     const handle = data.username ? `@${data.username}` : senderId
     return { name, handle }
   } catch {
