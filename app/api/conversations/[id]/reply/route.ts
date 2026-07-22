@@ -77,15 +77,23 @@ async function sendReply(conv: Record<string, unknown>, body: string): Promise<S
       sendPayload.messaging_type = 'RESPONSE'
     }
 
-    const qs = new URLSearchParams()
+    // Exactly matches the captured working Explorer request: form-urlencoded
+    // body with the three params (nested values as JSON strings), access_token
+    // in the query string, explicit Content-Type. Shape is confirmed NOT the
+    // variable (this shape already failed), so this is the correct baseline
+    // while we isolate the token value itself.
+    const form = new URLSearchParams()
     for (const [key, value] of Object.entries(sendPayload)) {
-      qs.set(key, typeof value === 'string' ? value : JSON.stringify(value))
+      form.set(key, typeof value === 'string' ? value : JSON.stringify(value))
     }
-    qs.set('access_token', token)
 
     const res = await fetch(
-      `https://graph.facebook.com/${META_GRAPH_VERSION}/${conn.account_id}/messages?${qs.toString()}`,
-      { method: 'POST' }
+      `https://graph.facebook.com/${META_GRAPH_VERSION}/${conn.account_id}/messages?access_token=${encodeURIComponent(token)}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: form.toString(),
+      }
     )
     // TEMPORARY DIAGNOSTIC — read the full raw body; the generic code 1 error
     // hides its real cause in error_data/error_user_msg, which JSON-picking
