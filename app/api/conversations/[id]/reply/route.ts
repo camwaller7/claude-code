@@ -80,13 +80,21 @@ async function sendReply(conv: Record<string, unknown>, body: string): Promise<S
       sendPayload.messaging_type = 'RESPONSE'
     }
 
+    // Send as application/x-www-form-urlencoded with the nested objects as JSON
+    // strings — the classic, widely-proven Send API format that Graph API
+    // Explorer uses under the hood. A raw application/json body was being
+    // rejected with a bare OAuthException code 1 despite an identical payload;
+    // this also url-encodes the access_token safely instead of interpolating
+    // it into the query string.
+    const form = new URLSearchParams()
+    for (const [key, value] of Object.entries(sendPayload)) {
+      form.set(key, typeof value === 'string' ? value : JSON.stringify(value))
+    }
+    form.set('access_token', token)
+
     const res = await fetch(
-      `https://graph.facebook.com/${META_GRAPH_VERSION}/${conn.account_id}/messages?access_token=${token}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(sendPayload),
-      }
+      `https://graph.facebook.com/${META_GRAPH_VERSION}/${conn.account_id}/messages`,
+      { method: 'POST', body: form }
     )
     // TEMPORARY DIAGNOSTIC — read the full raw body; the generic code 1 error
     // hides its real cause in error_data/error_user_msg, which JSON-picking
