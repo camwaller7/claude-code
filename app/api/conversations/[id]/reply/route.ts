@@ -81,14 +81,26 @@ async function sendReply(conv: Record<string, unknown>, body: string): Promise<S
         body: JSON.stringify(sendPayload),
       }
     )
-    const data = await res.json().catch(() => ({})) as {
+    // TEMPORARY DIAGNOSTIC — read the full raw body; the generic code 1 error
+    // hides its real cause in error_data/error_user_msg, which JSON-picking
+    // `error` alone drops. Log the whole request context + raw response.
+    const rawResponse = await res.text()
+    let data: {
       error?: { message: string; code?: number; error_subcode?: number; fbtrace_id?: string }
+    } = {}
+    try {
+      data = JSON.parse(rawResponse)
+    } catch {
+      /* non-JSON body — rawResponse logged below */
     }
     if (!res.ok || data.error) {
-      // TEMPORARY DIAGNOSTIC — Meta's "An unknown error has occurred" (code 1)
-      // hides the real cause; log the full error object (code/subcode/trace)
-      // so we can see what Meta is actually rejecting.
-      console.error('[reply-debug] Meta send failed:', res.status, JSON.stringify(data.error ?? {}))
+      console.error(
+        '[reply-debug] Meta send failed. status:', res.status,
+        '| version:', META_GRAPH_VERSION,
+        '| endpoint:', `${conn.account_id}/messages`,
+        '| payload:', JSON.stringify(sendPayload),
+        '| raw:', rawResponse
+      )
       return { ok: false, status: 'failed', error: data.error?.message ?? `Graph API returned ${res.status}` }
     }
     return { ok: true, status: 'sent' }
