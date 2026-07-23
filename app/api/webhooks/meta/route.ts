@@ -31,10 +31,24 @@ interface MessagingEvent {
   message?: { mid: string; text?: string; is_echo?: boolean }
 }
 
+// Instagram Business Login delivers DMs under entry.changes[] with
+// field "messages", NOT under entry.messaging[] like Facebook Pages do.
+interface ChangeValue {
+  sender?: { id: string }
+  recipient?: { id: string }
+  timestamp?: number
+  message?: { mid?: string; text?: string; is_echo?: boolean }
+}
+
+interface Change {
+  field?: string
+  value?: ChangeValue
+}
+
 interface Entry {
   id: string
   messaging?: MessagingEvent[]
-  changes?: unknown[]
+  changes?: Change[]
 }
 
 interface MetaWebhookPayload {
@@ -127,6 +141,48 @@ async function resolveMetaContact(
   }
 }
 
+// Shared ingest: upsert the conversation, insert the inbound message, triage.
+// Used by both the Facebook messaging[] path and the Instagram changes[] path.
+async function ingestInboundMessage(
+  platform: Platform,
+  entryId: string,
+  senderId: string,
+  timestampMs: number,
+  text: string
+): Promise<void> {
+  const contact = await resolveMetaContact(platform, entryId, senderId)
+  const { data: conv } = await adminSupabase
+    .from('conversations')
+    .upsert(
+      {
+        platform,
+        external_thread_id: senderId,
+        contact_name: contact.name,
+        contact_handle: contact.handle,
+        status: 'needs_reply',
+        last_message_at: new Date(timestampMs).toISOString(),
+      },
+      { onConflict: 'platform,external_thread_id' }
+    )
+    .select()
+    .single()
+
+  if (!conv) return
+
+  await adminSupabase.from('messages').insert({
+    conversation_id: conv.id,
+    direction: 'inbound',
+    body: text,
+    sent_at: new Date(timestampMs).toISOString(),
+  })
+
+  const triage = await triageMessage(text, senderId, platform)
+  await adminSupabase
+    .from('conversations')
+    .update({ category: triage.category, priority: triage.priority })
+    .eq('id', conv.id)
+}
+
 export async function POST(request: NextRequest) {
   const rawBody = await request.text()
 
@@ -151,9 +207,7 @@ export async function POST(request: NextRequest) {
         '| has messaging:', Array.isArray(entry.messaging), '(', entry.messaging?.length ?? 0, ')',
         '| has changes:', Array.isArray(entry.changes), '(', entry.changes?.length ?? 0, ')'
       )
-      if (entry.changes?.length) {
-        console.log('[meta-webhook-debug] entry.changes:', JSON.stringify(entry.changes))
-      }
+      // Facebook Pages path: inbound events arrive under entry.messaging[].
       for (const event of entry.messaging ?? []) {
         try {
           // Only handle real inbound text messages — skip echoes, read
@@ -167,42 +221,42 @@ export async function POST(request: NextRequest) {
             continue
           }
           console.log('[meta-webhook-debug] ACCEPTED inbound message from', event.sender.id)
-
-          const contact = await resolveMetaContact(platform, entry.id, event.sender.id)
-          const { data: conv } = await adminSupabase
-            .from('conversations')
-            .upsert(
-              {
-                platform,
-                external_thread_id: event.sender.id,
-                contact_name: contact.name,
-                contact_handle: contact.handle,
-                status: 'needs_reply',
-                last_message_at: new Date(event.timestamp).toISOString(),
-              },
-              { onConflict: 'platform,external_thread_id' }
-            )
-            .select()
-            .single()
-
-          if (!conv) continue
-
-          await adminSupabase.from('messages').insert({
-            conversation_id: conv.id,
-            direction: 'inbound',
-            body: event.message.text,
-            sent_at: new Date(event.timestamp).toISOString(),
-          })
-
-          const triage = await triageMessage(event.message.text, event.sender.id, platform)
-          await adminSupabase
-            .from('conversations')
-            .update({ category: triage.category, priority: triage.priority })
-            .eq('id', conv.id)
+          await ingestInboundMessage(platform, entry.id, event.sender.id, event.timestamp, event.message.text)
         } catch (eventErr) {
           // One bad event must not fail the whole batch — Meta retries and
           // eventually disables webhooks that keep returning errors
           console.error('Meta webhook event error:', eventErr)
+        }
+      }
+
+      // Instagram Business Login path: inbound DMs arrive under entry.changes[]
+      // with field "messages" (NOT under messaging[]). This is why IG DMs never
+      // loaded before — the events were logged and dropped.
+      for (const change of entry.changes ?? []) {
+        try {
+          if (change.field !== 'messages' || !change.value) {
+            console.log('[meta-webhook-debug] skipped change — field:', change.field, '| value:', JSON.stringify(change.value ?? null))
+            continue
+          }
+          const value = change.value
+          if (!value.message?.text || value.message.is_echo) {
+            console.log('[meta-webhook-debug] skipped change — no text or is_echo. value:', JSON.stringify(value))
+            continue
+          }
+          if (!value.sender?.id || value.sender.id === entry.id) {
+            console.log('[meta-webhook-debug] skipped change — missing sender or self/outbound echo')
+            continue
+          }
+          console.log('[meta-webhook-debug] ACCEPTED inbound change message from', value.sender.id)
+          await ingestInboundMessage(
+            platform,
+            entry.id,
+            value.sender.id,
+            value.timestamp ?? Date.now(),
+            value.message.text
+          )
+        } catch (changeErr) {
+          console.error('Meta webhook change error:', changeErr)
         }
       }
     }
