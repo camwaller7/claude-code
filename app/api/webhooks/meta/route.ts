@@ -121,16 +121,26 @@ async function resolveMetaContact(
     // name/username. Request the right fields per platform.
     const fields = platform === 'instagram' ? 'name,username' : 'first_name,last_name'
     const res = await fetch(
-      `https://graph.facebook.com/${META_GRAPH_VERSION}/${senderId}?fields=${fields}&access_token=${token}`
+      `https://graph.facebook.com/${META_GRAPH_VERSION}/${senderId}?fields=${fields}&access_token=${encodeURIComponent(token)}`
     )
-    const data = (await res.json().catch(() => ({}))) as {
-      name?: string
-      username?: string
-      first_name?: string
-      last_name?: string
-      error?: { message: string }
-    }
-    if (data.error) return fallback
+    const rawBody = await res.text()
+    // TEMPORARY DIAGNOSTIC — reveal whether the profile lookup returns a name
+    // or is being gated/emptied (which would keep the inbox showing the ID).
+    console.log('[meta-webhook-debug] contact lookup', platform, senderId, '| status', res.status, '| body', rawBody)
+    const data = (() => {
+      try {
+        return JSON.parse(rawBody) as {
+          name?: string
+          username?: string
+          first_name?: string
+          last_name?: string
+          error?: { message: string }
+        }
+      } catch {
+        return {} as Record<string, never>
+      }
+    })()
+    if ('error' in data && data.error) return fallback
 
     const fullName = [data.first_name, data.last_name].filter(Boolean).join(' ').trim()
     const name = data.name || fullName || data.username || senderId
