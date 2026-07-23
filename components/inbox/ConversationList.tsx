@@ -1,9 +1,9 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import type { Conversation } from '@/types'
-import { Badge } from '@/components/ui/badge'
-import { cn, relativeTime } from '@/lib/utils'
+import { useState } from 'react'
+import type { Conversation, MessageCategory } from '@/types'
+import { relativeTime } from '@/lib/utils'
 
 function platformLabel(platform: string): string {
   const map: Record<string, string> = {
@@ -13,16 +13,18 @@ function platformLabel(platform: string): string {
     threads: 'TH',
     tiktok: 'TK',
     gmail: 'GM',
+    telegram: 'TG',
   }
   return map[platform] ?? platform.toUpperCase()
 }
 
-function categoryVariant(category: string): 'default' | 'secondary' | 'destructive' | 'outline' {
-  if (category === 'brand_deal') return 'default'
-  if (category === 'spam') return 'destructive'
-  if (category === 'client') return 'secondary'
-  return 'outline'
-}
+const CATEGORY_OPTIONS: { value: MessageCategory; label: string }[] = [
+  { value: 'uncategorized', label: 'Uncategorized' },
+  { value: 'brand_deal', label: 'Brand deal' },
+  { value: 'client', label: 'Client' },
+  { value: 'fan', label: 'Fan' },
+  { value: 'spam', label: 'Spam' },
+]
 
 interface Props {
   conversations: Conversation[]
@@ -30,6 +32,35 @@ interface Props {
 
 export function ConversationList({ conversations }: Props) {
   const router = useRouter()
+  const [busyId, setBusyId] = useState<string | null>(null)
+
+  async function updateCategory(id: string, category: string) {
+    setBusyId(id)
+    try {
+      const res = await fetch(`/api/conversations/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category }),
+      })
+      if (res.ok) router.refresh()
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function deleteConversation(id: string, name: string) {
+    const ok = window.confirm(
+      `Delete the chat with ${name}? This removes the conversation and its messages from Corvelle. It does not delete anything on the original platform.`
+    )
+    if (!ok) return
+    setBusyId(id)
+    try {
+      const res = await fetch(`/api/conversations/${id}`, { method: 'DELETE' })
+      if (res.ok) router.refresh()
+    } finally {
+      setBusyId(null)
+    }
+  }
 
   return (
     <div className="flex flex-col gap-2">
@@ -53,11 +84,35 @@ export function ConversationList({ conversations }: Props) {
               <span className="block text-xs text-muted-foreground truncate">{conv.contact_handle}</span>
             </div>
           </div>
-          <div className="flex items-center gap-3 shrink-0">
-            <Badge variant={categoryVariant(conv.category)}>
-              {conv.category.replace('_', ' ')}
-            </Badge>
-            <span className="text-xs text-muted-foreground">{conv.last_message_at ? relativeTime(conv.last_message_at) : ''}</span>
+          {/* Stop propagation so using these controls doesn't open the chat. */}
+          <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+            <select
+              aria-label="Category"
+              title="Categorise this chat"
+              value={conv.category}
+              disabled={busyId === conv.id}
+              onChange={(e) => updateCategory(conv.id, e.target.value)}
+              className="rounded-md border border-input bg-background px-2 py-1 text-xs disabled:opacity-50"
+            >
+              {CATEGORY_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+            <span className="hidden text-xs text-muted-foreground sm:inline">
+              {conv.last_message_at ? relativeTime(conv.last_message_at) : ''}
+            </span>
+            <button
+              type="button"
+              aria-label="Delete chat"
+              title="Delete chat"
+              disabled={busyId === conv.id}
+              onClick={() => deleteConversation(conv.id, conv.contact_name)}
+              className="rounded-md px-2 py-1 text-sm text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+            >
+              ✕
+            </button>
           </div>
         </div>
       ))}
