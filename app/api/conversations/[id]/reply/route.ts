@@ -91,7 +91,14 @@ async function sendReply(conv: Record<string, unknown>, body: string): Promise<S
       `https://graph.facebook.com/${META_GRAPH_VERSION}/${conn.account_id}/messages?access_token=${encodeURIComponent(token)}`,
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          // Same token + shape succeed from the browser but fail server-side
+          // with a 500/code 1. Add browser-like headers to test whether Meta's
+          // edge is filtering bare headerless server POSTs to the Send API.
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36',
+          Accept: 'application/json',
+        },
         body: form.toString(),
       }
     )
