@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { adminSupabase } from '@/lib/supabase/admin'
 import { requireAuth } from '@/lib/auth/requireAuth'
 import { Platform, PlatformConnection } from '@/types'
+import { TelegramConnectForm } from '@/components/onboarding/TelegramConnectForm'
 import Link from 'next/link'
 
 interface PlatformConfig {
@@ -44,6 +45,13 @@ const PLATFORM_CONFIGS: PlatformConfig[] = [
     platform: 'gmail',
     connectHref: '/api/gmail/connect',
     description: 'Connect Gmail to manage email brand inquiries.',
+  },
+  {
+    label: 'Telegram',
+    platform: 'telegram',
+    connectHref: null,
+    description: 'Connect a Telegram bot to receive and reply to DMs in your inbox.',
+    requirementNote: 'Create a bot with @BotFather in Telegram (send /newbot), copy the token it gives you, and paste it below. People who message your bot appear here. Note: Telegram bots can only message people who have messaged the bot first.',
   },
   {
     label: 'Threads',
@@ -112,7 +120,9 @@ export default async function OnboardingPage() {
                   )}
                 </CardHeader>
                 <CardContent>
-                  {config.manualNote ? (
+                  {config.platform === 'telegram' ? (
+                    <TelegramConnectForm connected={isConnected} />
+                  ) : config.manualNote ? (
                     <p className="text-sm text-muted-foreground">{config.manualNote}</p>
                   ) : config.connectHref ? (
                     <Link href={config.connectHref}>

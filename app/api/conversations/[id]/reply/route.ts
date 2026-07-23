@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { adminSupabase } from '@/lib/supabase/admin'
 import { requireApiAuth } from '@/lib/auth/requireApiAuth'
 import { getValidToken, getValidMetaToken } from '@/lib/platform/tokens'
+import { getTelegramToken, TELEGRAM_API } from '@/lib/platform/telegram'
 import { decryptToken } from '@/lib/crypto/tokenCipher'
 import { META_GRAPH_VERSION } from '@/lib/platform/metaVersion'
 
@@ -191,6 +192,22 @@ async function sendReply(conv: Record<string, unknown>, body: string): Promise<S
     if (!sendRes.ok) {
       const errBody = await sendRes.text().catch(() => '')
       return { ok: false, status: 'failed', error: `Gmail send failed: ${sendRes.status} ${errBody}` }
+    }
+    return { ok: true, status: 'sent' }
+  }
+
+  if (platform === 'telegram') {
+    const botToken = await getTelegramToken()
+    if (!botToken) return { ok: false, status: 'failed', error: 'No Telegram connection found' }
+
+    const res = await fetch(`${TELEGRAM_API}/bot${botToken}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: conv.external_thread_id, text: body }),
+    })
+    const data = await res.json().catch(() => ({})) as { ok?: boolean; description?: string }
+    if (!res.ok || !data.ok) {
+      return { ok: false, status: 'failed', error: data.description ?? `Telegram API returned ${res.status}` }
     }
     return { ok: true, status: 'sent' }
   }

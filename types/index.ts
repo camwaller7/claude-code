@@ -1,4 +1,4 @@
-export type Platform = 'instagram' | 'facebook' | 'x' | 'threads' | 'tiktok' | 'gmail'
+export type Platform = 'instagram' | 'facebook' | 'x' | 'threads' | 'tiktok' | 'gmail' | 'telegram'
 
 export type MessageCategory = 'brand_deal' | 'client' | 'fan' | 'spam' | 'uncategorized'
 
