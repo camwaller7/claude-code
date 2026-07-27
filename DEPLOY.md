@@ -2,6 +2,14 @@
 
 Everything runs on Vercel + Supabase. This guide goes from zero to live.
 
+**Live production:** the app is deployed at `https://influencer-pa.vercel.app`
+from the `camwaller7/influencer-PA` repo. The steps below are written against
+that setup — swap in a different URL/repo only if you spin up a new instance.
+
+> **Node version:** the project pins Node **22.x** (`package.json` `engines` +
+> `.nvmrc`). Make sure Vercel → Settings → General → Node.js Version is `22.x`
+> or `Auto`; a hard-pinned older version there overrides `package.json`.
+
 ---
 
 ## 1. Supabase — production database
@@ -16,18 +24,18 @@ Everything runs on Vercel + Supabase. This guide goes from zero to live.
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY` → the `anon` `public` key
    - `SUPABASE_SERVICE_ROLE_KEY` → the `service_role` key (keep secret)
 4. From **Authentication → URL Configuration**, set:
-   - Site URL: `https://your-app.vercel.app`
-   - Redirect URLs: add `https://your-app.vercel.app/auth/callback`
+   - Site URL: `https://influencer-pa.vercel.app`
+   - Redirect URLs: add `https://influencer-pa.vercel.app/auth/callback`
 
 ---
 
 ## 2. Vercel — deploy the app
 
-1. Go to [vercel.com](https://vercel.com), import the `camwaller7/claude-code` repo.
+1. Go to [vercel.com](https://vercel.com), import the `camwaller7/influencer-PA` repo.
 2. Set the **Production Branch** to `claude/magical-hopper-fmpbje` (or merge to `main` first).
 3. Add all environment variables from `.env.example` — see the table below.
-4. Deploy. Note your production URL (e.g. `https://your-app.vercel.app`).
-5. Go back and set `NEXT_PUBLIC_APP_URL=https://your-app.vercel.app`, then **redeploy**.
+4. Deploy. Note your production URL (e.g. `https://influencer-pa.vercel.app`).
+5. Go back and set `NEXT_PUBLIC_APP_URL=https://influencer-pa.vercel.app`, then **redeploy**.
 
 ### Environment variables cheat sheet
 
@@ -54,9 +62,18 @@ Everything runs on Vercel + Supabase. This guide goes from zero to live.
 
 1. Sign up at [app.inngest.com](https://app.inngest.com) and create an app.
 2. Copy `INNGEST_EVENT_KEY` and `INNGEST_SIGNING_KEY` into Vercel env vars.
+   (The official Vercel–Inngest integration adds these automatically and
+   triggers a redeploy.)
 3. In the Inngest dashboard, add your production URL as a sync endpoint:
-   `https://your-app.vercel.app/api/inngest`
-4. Click **Sync** — Inngest will discover `syncInboxes` (15-min cron) and `publishPost`.
+   `https://influencer-pa.vercel.app/api/inngest`
+4. Click **Sync** — Inngest discovers all three functions: `sync-inboxes`
+   (15-min cron), `sync-analytics` (daily cron), and `publish-post`
+   (event-triggered).
+
+> **Gotcha:** the Vercel integration's auto-sync targets a deployment-specific
+> preview URL, which Vercel's deployment protection can block — that lands in
+> **Unattached syncs** with an error. Always add a manual sync against the
+> stable **production** URL above; that's the one that sticks.
 
 ---
 
@@ -66,7 +83,7 @@ After deploying, you need Meta to push DMs to your app in real time.
 
 1. Go to [developers.facebook.com](https://developers.facebook.com) → your app → **Webhooks**.
 2. Subscribe to the **Instagram** product:
-   - Callback URL: `https://your-app.vercel.app/api/webhooks/meta`
+   - Callback URL: `https://influencer-pa.vercel.app/api/webhooks/meta`
    - Verify token: the value of `META_WEBHOOK_VERIFY_TOKEN`
    - Fields: `messages`, `messaging_postbacks`
 3. Do the same for the **Messenger** product (same callback URL and verify token).
@@ -80,26 +97,26 @@ Each platform requires the callback URL whitelisted before OAuth will work.
 
 ### Meta (Instagram + Facebook + Threads)
 - App Dashboard → Facebook Login → Settings → Valid OAuth Redirect URIs:
-  `https://your-app.vercel.app/api/meta/callback`
+  `https://influencer-pa.vercel.app/api/meta/callback`
 
 ### X (Twitter)
 - developer.twitter.com → your app → Settings → User authentication settings:
-  - Callback URI: `https://your-app.vercel.app/api/x/callback`
-  - Website URL: `https://your-app.vercel.app`
+  - Callback URI: `https://influencer-pa.vercel.app/api/x/callback`
+  - Website URL: `https://influencer-pa.vercel.app`
 
 ### Gmail
 - Google Cloud Console → APIs & Services → Credentials → your OAuth 2.0 client:
-  - Authorised redirect URI: `https://your-app.vercel.app/api/gmail/callback`
+  - Authorised redirect URI: `https://influencer-pa.vercel.app/api/gmail/callback`
 
 ### Threads
-- Same Meta app as Instagram — add `https://your-app.vercel.app/api/threads/callback`
+- Same Meta app as Instagram — add `https://influencer-pa.vercel.app/api/threads/callback`
   to the valid redirect URIs in the Threads product settings.
 
 ---
 
 ## 6. First login
 
-1. Visit `https://your-app.vercel.app/auth/login`
+1. Visit `https://influencer-pa.vercel.app/auth/login`
 2. Enter `cambswaller7@gmail.com` — Supabase sends a magic link
 3. Click the link → you're in
 4. Go to `/onboarding` and connect each platform one by one
