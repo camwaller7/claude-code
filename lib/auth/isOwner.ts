@@ -11,10 +11,17 @@
  * accounts are connected.
  */
 export function isOwnerEmail(email: string | null | undefined): boolean {
-  const owner = process.env.OWNER_EMAIL?.trim().toLowerCase()
-  if (!owner) {
+  // OWNER_EMAIL may be a single address or a comma-separated allowlist. The
+  // allowlist exists so a dedicated Meta App Review test account can be granted
+  // access for the review without exposing or sharing the creator's own login —
+  // add the reviewer test email during review, remove it after approval.
+  const owners = (process.env.OWNER_EMAIL ?? '')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean)
+  if (owners.length === 0) {
     console.warn('[security] OWNER_EMAIL is not set — access is NOT restricted to a single user. Set OWNER_EMAIL before connecting real accounts.')
     return true
   }
-  return !!email && email.trim().toLowerCase() === owner
+  return !!email && owners.includes(email.trim().toLowerCase())
 }

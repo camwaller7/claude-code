@@ -21,12 +21,14 @@ export async function GET(request: NextRequest) {
   cookieStore.set('x_code_verifier', codeVerifier, {
     httpOnly: true,
     sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
     maxAge: 600,
     path: '/',
   })
   cookieStore.set('x_oauth_state', state, {
     httpOnly: true,
     sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
     maxAge: 600,
     path: '/',
   })

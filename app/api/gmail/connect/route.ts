@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
   cookieStore.set('gmail_oauth_state', state, {
     httpOnly: true,
     sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
     maxAge: 600,
     path: '/',
   })

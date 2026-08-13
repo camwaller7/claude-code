@@ -5,6 +5,7 @@ import { getValidToken, getValidMetaToken } from '@/lib/platform/tokens'
 import { getTelegramToken, TELEGRAM_API } from '@/lib/platform/telegram'
 import { decryptToken } from '@/lib/crypto/tokenCipher'
 import { META_GRAPH_VERSION } from '@/lib/platform/metaVersion'
+import { metaDebug } from '@/lib/log/debug'
 
 const META_MESSAGING_WINDOW_MS = 24 * 60 * 60 * 1000
 
@@ -62,7 +63,7 @@ async function sendReply(conv: Record<string, unknown>, body: string): Promise<S
     // invalid token and Meta returns a bare "unknown error" (code 1). Trim it.
     const token = rawToken.trim()
     if (token.length !== rawToken.length) {
-      console.error('[reply-debug] stored token had surrounding whitespace — trimmed', rawToken.length, '->', token.length)
+      metaDebug('[reply-debug] stored token had surrounding whitespace — trimmed', rawToken.length, '->', token.length)
     }
 
     // The token self-test GET (all params in the query string) returns 200, but
@@ -116,7 +117,15 @@ async function sendReply(conv: Record<string, unknown>, body: string): Promise<S
       /* non-JSON body — rawResponse logged below */
     }
     if (!res.ok || data.error) {
+      // Operational error line — no message content or token, safe for prod logs.
       console.error(
+        '[reply] Meta send failed. status:', res.status,
+        '| code:', data.error?.code ?? 'n/a',
+        '| fbtrace:', data.error?.fbtrace_id ?? 'n/a'
+      )
+      // Full context (includes the outbound message body) only when explicitly
+      // debugging — see lib/log/debug.ts.
+      metaDebug(
         '[reply-debug] Meta send failed. status:', res.status,
         '| version:', META_GRAPH_VERSION,
         '| endpoint:', `${conn.account_id}/messages`,

@@ -5,6 +5,7 @@ import { triageMessage } from '@/lib/anthropic/triage'
 import { getValidMetaToken } from '@/lib/platform/tokens'
 import { decryptToken } from '@/lib/crypto/tokenCipher'
 import { META_GRAPH_VERSION } from '@/lib/platform/metaVersion'
+import { metaDebug } from '@/lib/log/debug'
 import type { Platform } from '@/types'
 
 export async function GET(request: NextRequest) {
@@ -126,7 +127,7 @@ async function resolveMetaContact(
     const rawBody = await res.text()
     // TEMPORARY DIAGNOSTIC — reveal whether the profile lookup returns a name
     // or is being gated/emptied (which would keep the inbox showing the ID).
-    console.log('[meta-webhook-debug] contact lookup', platform, senderId, '| status', res.status, '| body', rawBody)
+    metaDebug('[meta-webhook-debug] contact lookup', platform, senderId, '| status', res.status, '| body', rawBody)
     const data = (() => {
       try {
         return JSON.parse(rawBody) as {
@@ -204,13 +205,13 @@ export async function POST(request: NextRequest) {
   // Logs the exact payload Meta delivers so we can see whether real inbound
   // messages arrive under entry.messaging[] (as this code expects) or under
   // entry.changes[] / some other shape (which would be silently ignored).
-  console.log('[meta-webhook-debug] raw payload:', rawBody)
+  metaDebug('[meta-webhook-debug] raw payload:', rawBody)
 
   try {
     const payload = JSON.parse(rawBody) as MetaWebhookPayload
     const platform: Platform = payload.object === 'instagram' ? 'instagram' : 'facebook'
 
-    console.log('[meta-webhook-debug] object:', payload.object, '| entries:', (payload.entry ?? []).length)
+    metaDebug('[meta-webhook-debug] object:', payload.object, '| entries:', (payload.entry ?? []).length)
     for (const entry of payload.entry ?? []) {
       console.log(
         '[meta-webhook-debug] entry.id:', entry.id,
@@ -223,14 +224,14 @@ export async function POST(request: NextRequest) {
           // Only handle real inbound text messages — skip echoes, read
           // receipts, delivery confirmations, postbacks, attachments-only
           if (!event.message?.text || event.message.is_echo) {
-            console.log('[meta-webhook-debug] skipped event — no text or is_echo. keys:', JSON.stringify(Object.keys(event)), '| message:', JSON.stringify(event.message ?? null))
+            metaDebug('[meta-webhook-debug] skipped event — no text or is_echo. keys:', JSON.stringify(Object.keys(event)), '| message:', JSON.stringify(event.message ?? null))
             continue
           }
           if (event.sender.id === entry.id) {
-            console.log('[meta-webhook-debug] skipped event — sender.id === entry.id (self/outbound echo)')
+            metaDebug('[meta-webhook-debug] skipped event — sender.id === entry.id (self/outbound echo)')
             continue
           }
-          console.log('[meta-webhook-debug] ACCEPTED inbound message from', event.sender.id)
+          metaDebug('[meta-webhook-debug] ACCEPTED inbound message from', event.sender.id)
           await ingestInboundMessage(platform, entry.id, event.sender.id, event.timestamp, event.message.text)
         } catch (eventErr) {
           // One bad event must not fail the whole batch — Meta retries and
@@ -245,19 +246,19 @@ export async function POST(request: NextRequest) {
       for (const change of entry.changes ?? []) {
         try {
           if (change.field !== 'messages' || !change.value) {
-            console.log('[meta-webhook-debug] skipped change — field:', change.field, '| value:', JSON.stringify(change.value ?? null))
+            metaDebug('[meta-webhook-debug] skipped change — field:', change.field, '| value:', JSON.stringify(change.value ?? null))
             continue
           }
           const value = change.value
           if (!value.message?.text || value.message.is_echo) {
-            console.log('[meta-webhook-debug] skipped change — no text or is_echo. value:', JSON.stringify(value))
+            metaDebug('[meta-webhook-debug] skipped change — no text or is_echo. value:', JSON.stringify(value))
             continue
           }
           if (!value.sender?.id || value.sender.id === entry.id) {
-            console.log('[meta-webhook-debug] skipped change — missing sender or self/outbound echo')
+            metaDebug('[meta-webhook-debug] skipped change — missing sender or self/outbound echo')
             continue
           }
-          console.log('[meta-webhook-debug] ACCEPTED inbound change message from', value.sender.id)
+          metaDebug('[meta-webhook-debug] ACCEPTED inbound change message from', value.sender.id)
           await ingestInboundMessage(
             platform,
             entry.id,
