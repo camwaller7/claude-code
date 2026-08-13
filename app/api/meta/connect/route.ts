@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
   if (configId) {
     params.set('config_id', configId)
   } else {
-    params.set('scope', 'pages_show_list,pages_messaging,pages_read_engagement,pages_manage_posts')
+    params.set('scope', 'pages_show_list,pages_messaging,pages_manage_posts')
   }
 
   const url = `https://www.facebook.com/v21.0/dialog/oauth?${params.toString()}`

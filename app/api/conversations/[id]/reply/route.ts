@@ -6,6 +6,7 @@ import { getTelegramToken, TELEGRAM_API } from '@/lib/platform/telegram'
 import { decryptToken } from '@/lib/crypto/tokenCipher'
 import { META_GRAPH_VERSION } from '@/lib/platform/metaVersion'
 import { metaDebug } from '@/lib/log/debug'
+import { appsecretProof } from '@/lib/platform/appsecretProof'
 
 const META_MESSAGING_WINDOW_MS = 24 * 60 * 60 * 1000
 
@@ -89,8 +90,12 @@ async function sendReply(conv: Record<string, unknown>, body: string): Promise<S
       form.set(key, typeof value === 'string' ? value : JSON.stringify(value))
     }
 
+    // Include appsecret_proof so the call still succeeds if the app requires
+    // proof for server-side Graph calls (Meta increasingly defaults this on).
+    const proof = appsecretProof(token, platform as 'facebook' | 'instagram')
+    const proofQuery = proof ? `&appsecret_proof=${proof}` : ''
     const res = await fetch(
-      `https://graph.facebook.com/${META_GRAPH_VERSION}/${conn.account_id}/messages?access_token=${encodeURIComponent(token)}`,
+      `https://graph.facebook.com/${META_GRAPH_VERSION}/${conn.account_id}/messages?access_token=${encodeURIComponent(token)}${proofQuery}`,
       {
         method: 'POST',
         headers: {

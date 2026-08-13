@@ -15,16 +15,22 @@ screencast scripts). Sources: two code audits + manual review, 2026-08.
 | # | Finding | Severity | State |
 |---|---------|----------|-------|
 | 1 | A Meta reviewer cannot log in (single-owner gate) | BLOCKER | ✅ code fix shipped (allowlist) + needs test account |
-| 2 | `instagram_business_manage_comments` requested but no comment feature exists | BLOCKER | ⏳ DECISION: remove vs build |
-| 3 | `pages_read_engagement` requested but no Page-engagement read exists | BLOCKER | ⏳ DECISION: remove vs build |
-| 4 | No real data-deletion mechanism (instructions page only) | BLOCKER | ⏳ build callback + deletion |
+| 2 | `instagram_business_manage_comments` requested but no comment feature exists | BLOCKER | ✅ removed from scope + subscription |
+| 3 | `pages_read_engagement` requested but no Page-engagement read exists | BLOCKER | ✅ removed from scope |
+| 4 | No real data-deletion mechanism (instructions page only) | BLOCKER | ✅ callbacks built + needs dashboard registration |
 | 5 | Message bodies + contact names written to server logs | BLOCKER | ✅ fixed (gated behind env flag) |
-| 6 | No `appsecret_proof` on token-bearing Graph calls | RECOMMENDED | ⏳ build helper + apply |
+| 6 | No `appsecret_proof` on token-bearing Graph calls | RECOMMENDED | ✅ applied to messaging calls; OAuth-time calls pending |
 | 7 | Instagram insights uses a scope not requested (`instagram_manage_insights`) | RECOMMENDED | ⏳ reconcile |
 | 8 | OAuth state/PKCE cookies missing `secure` flag (IG/Threads/Gmail/X) | RECOMMENDED | ✅ fixed |
 | 9 | Send path in messy debug state (browser-spoof UA, query-string token) | OPTIONAL | ⏳ clean up |
 | 10 | Legacy plaintext pass-through in `decryptToken` | OPTIONAL | leave (back-compat) |
 | — | Business Verification not confirmed started | BLOCKER (process) | browser/owner |
+
+> **Update (this round):** findings 2, 3, 4, 5, 6, 8 addressed in code. The
+> fast-path decision on 2 & 3 was to REMOVE the unused permissions (reversible;
+> re-add with a real feature in a later review round). Remaining: register the
+> data-deletion + deauthorize callback URLs in the dashboard (browser),
+> reconcile the insights scope (7), and the optional cleanups.
 
 Solid and confirmed working: `pages_messaging`, `pages_show_list`,
 `pages_manage_posts`, `instagram_business_basic`,

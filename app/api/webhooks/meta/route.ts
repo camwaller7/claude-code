@@ -6,6 +6,7 @@ import { getValidMetaToken } from '@/lib/platform/tokens'
 import { decryptToken } from '@/lib/crypto/tokenCipher'
 import { META_GRAPH_VERSION } from '@/lib/platform/metaVersion'
 import { metaDebug } from '@/lib/log/debug'
+import { appsecretProof } from '@/lib/platform/appsecretProof'
 import type { Platform } from '@/types'
 
 export async function GET(request: NextRequest) {
@@ -121,8 +122,10 @@ async function resolveMetaContact(
     // single `name` field; Instagram messaging users (IGSIDs) expose
     // name/username. Request the right fields per platform.
     const fields = platform === 'instagram' ? 'name,username' : 'first_name,last_name'
+    const proof = appsecretProof(token, platform)
+    const proofQuery = proof ? `&appsecret_proof=${proof}` : ''
     const res = await fetch(
-      `https://graph.facebook.com/${META_GRAPH_VERSION}/${senderId}?fields=${fields}&access_token=${encodeURIComponent(token)}`
+      `https://graph.facebook.com/${META_GRAPH_VERSION}/${senderId}?fields=${fields}&access_token=${encodeURIComponent(token)}${proofQuery}`
     )
     const rawBody = await res.text()
     // TEMPORARY DIAGNOSTIC — reveal whether the profile lookup returns a name
