@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { adminSupabase } from '@/lib/supabase/admin'
 import { requireApiAuth } from '@/lib/auth/requireApiAuth'
-import { getValidMetaToken } from '@/lib/platform/tokens'
+import { getValidMetaToken, PlatformNotConnectedError, isTokenAuthError } from '@/lib/platform/tokens'
 import { META_GRAPH_VERSION } from '@/lib/platform/metaVersion'
 
 // ─── Instagram Insights sync ──────────────────────────────────────────────────
@@ -59,7 +59,8 @@ export async function POST(request: Request) {
       .single()
 
     if (!conn) {
-      return NextResponse.json({ error: 'No Instagram connection' }, { status: 400 })
+      // Not connected: nothing to sync. 200 so the scheduled job no-ops.
+      return NextResponse.json({ skipped: true, reason: 'not_connected', platform: 'instagram' })
     }
 
     const accountId = conn.account_id as string
@@ -133,6 +134,18 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ followerSnapshots: followerRow, metricsSynced })
   } catch (err) {
+    // Not connected, or the stored token was invalidated (password change,
+    // revoked access, expired session): the owner needs to reconnect Instagram.
+    // Return 200 so the daily job no-ops instead of retrying a "500" — the
+    // reconnect prompt lives in the UI, not in an endlessly-failing cron.
+    if (err instanceof PlatformNotConnectedError || isTokenAuthError(err)) {
+      console.warn('[instagram/insights] skipped — Instagram needs reconnecting:', err instanceof Error ? err.message : err)
+      return NextResponse.json({
+        skipped: true,
+        reason: err instanceof PlatformNotConnectedError ? 'not_connected' : 'reauth_required',
+        platform: 'instagram',
+      })
+    }
     console.error('Instagram insights sync error:', err)
     return NextResponse.json({ error: String(err) }, { status: 500 })
   }

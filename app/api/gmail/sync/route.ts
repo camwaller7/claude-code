@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { adminSupabase } from '@/lib/supabase/admin'
 import { requireApiAuth } from '@/lib/auth/requireApiAuth'
 import { triageMessage } from '@/lib/anthropic/triage'
-import { getValidToken } from '@/lib/platform/tokens'
+import { getValidToken, PlatformNotConnectedError, isTokenAuthError } from '@/lib/platform/tokens'
 
 interface GmailHeader {
   name: string
@@ -150,6 +150,16 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ synced })
   } catch (err) {
+    // Gmail not connected, or its token was revoked/expired: nothing to sync.
+    // Return 200 so the scheduled job treats it as a no-op instead of retrying
+    // a "500" every cycle and flooding the logs.
+    if (err instanceof PlatformNotConnectedError || isTokenAuthError(err)) {
+      return NextResponse.json({
+        skipped: true,
+        reason: err instanceof PlatformNotConnectedError ? 'not_connected' : 'reauth_required',
+        platform: 'gmail',
+      })
+    }
     console.error('Gmail sync error:', err)
     return NextResponse.json({ error: String(err) }, { status: 500 })
   }

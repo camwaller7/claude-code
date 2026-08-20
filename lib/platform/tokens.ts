@@ -2,6 +2,27 @@ import { adminSupabase } from '@/lib/supabase/admin'
 import { encryptToken, decryptToken } from '@/lib/crypto/tokenCipher'
 import { META_GRAPH_VERSION } from '@/lib/platform/metaVersion'
 
+// Thrown when a platform has no stored connection. This is a normal state (the
+// user simply hasn't connected that platform), not a failure — scheduled sync
+// jobs treat it as a no-op skip rather than a 500, so a disconnected platform
+// doesn't flood the logs or burn Inngest retries.
+export class PlatformNotConnectedError extends Error {
+  constructor(public readonly platform: string) {
+    super(`No platform connection found for ${platform}`)
+    this.name = 'PlatformNotConnectedError'
+  }
+}
+
+// True when an error looks like a platform rejecting our stored access token
+// (revoked, expired, password-changed, session invalidated). Callers treat this
+// like a not-connected skip and surface a reconnect prompt instead of erroring.
+export function isTokenAuthError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err)
+  return /access token|session has been invalidated|OAuthException|token has expired|code\s*190|invalid_grant|unauthorized/i.test(
+    msg
+  )
+}
+
 export async function getValidToken(platform: 'gmail' | 'x'): Promise<string> {
   const { data: conn, error } = await adminSupabase
     .from('platform_connections')
@@ -11,7 +32,7 @@ export async function getValidToken(platform: 'gmail' | 'x'): Promise<string> {
     .single()
 
   if (error || !conn) {
-    throw new Error(`No platform connection found for ${platform}`)
+    throw new PlatformNotConnectedError(platform)
   }
 
   const accessToken = decryptToken(conn.access_token)!
@@ -160,7 +181,7 @@ export async function getValidMetaToken(
     .single()
 
   if (error || !conn) {
-    throw new Error(`No ${platform} connection found for account ${accountId}`)
+    throw new PlatformNotConnectedError(platform)
   }
 
   const decryptedConn: MetaConnection = { ...conn, access_token: decryptToken(conn.access_token)! }
