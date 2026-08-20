@@ -141,7 +141,7 @@ export async function GET(request: NextRequest) {
                           `https://graph.facebook.com/${META_GRAPH_VERSION}/${page.id}/conversations?fields=participants&access_token=${page.access_token}`
                         )
                 const convData = await convRes.json() as {
-                          data?: { id: string }[]
+                          data?: { id: string; participants?: { data?: { id: string; name?: string }[] } }[]
                           error?: { message: string }
                 }
 
@@ -158,12 +158,15 @@ export async function GET(request: NextRequest) {
                           if (msgs.length === 0) continue
 
                           const otherParticipant = msgs.find((m) => m.from.id !== page.id)?.from.id ?? thread.id
+                          // Use the participant's display name from the Conversations API
+                          // rather than the raw numeric id, so backfilled chats show a name.
+                          const participantName = thread.participants?.data?.find((p) => p.id === otherParticipant)?.name
 
                           const { data: conv } = await adminSupabase.from('conversations').upsert(
                             {
                                           platform: 'facebook',
                                           external_thread_id: otherParticipant,
-                                          contact_name: otherParticipant,
+                                          contact_name: participantName ?? otherParticipant,
                                           contact_handle: otherParticipant,
                                           status: 'needs_reply',
                                           last_message_at: msgs[0]?.created_time ?? new Date().toISOString(),

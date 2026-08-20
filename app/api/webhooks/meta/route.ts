@@ -76,6 +76,35 @@ function verifySignature(rawBody: string, signatureHeader: string | null): boole
   )
 }
 
+// Facebook's User Profile API (GET /{PSID}) can return an empty or gated result
+// for a page-scoped id even when messaging works. The Conversations API exposes
+// the participant's display name and is available with pages_messaging, so it's
+// a reliable fallback for turning a PSID into a real name.
+async function facebookParticipantName(
+  pageId: string,
+  psid: string,
+  token: string,
+  proofQuery: string
+): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://graph.facebook.com/${META_GRAPH_VERSION}/${pageId}/conversations?platform=messenger&user_id=${psid}&fields=participants&access_token=${encodeURIComponent(token)}${proofQuery}`
+    )
+    if (!res.ok) return null
+    const json = (await res.json()) as {
+      data?: { participants?: { data?: { id: string; name?: string }[] } }[]
+    }
+    for (const conv of json.data ?? []) {
+      for (const p of conv.participants?.data ?? []) {
+        if (p.id !== pageId && p.name) return p.name
+      }
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
 // The webhook payload only carries the sender's numeric ID (PSID/IGSID), not a
 // display name — so without this the inbox shows a raw number as the contact.
 // Resolve a human-readable name/handle via the Graph API using the connected
@@ -124,8 +153,12 @@ async function resolveMetaContact(
     const fields = platform === 'instagram' ? 'name,username' : 'first_name,last_name'
     const proof = appsecretProof(token, platform)
     const proofQuery = proof ? `&appsecret_proof=${proof}` : ''
+    // Instagram Login tokens only resolve against graph.instagram.com; Facebook
+    // Page tokens against graph.facebook.com. Using the wrong host returns an
+    // error and the inbox falls back to the raw numeric ID.
+    const host = platform === 'instagram' ? 'https://graph.instagram.com' : 'https://graph.facebook.com'
     const res = await fetch(
-      `https://graph.facebook.com/${META_GRAPH_VERSION}/${senderId}?fields=${fields}&access_token=${encodeURIComponent(token)}${proofQuery}`
+      `${host}/${META_GRAPH_VERSION}/${senderId}?fields=${fields}&access_token=${encodeURIComponent(token)}${proofQuery}`
     )
     const rawBody = await res.text()
     // TEMPORARY DIAGNOSTIC — reveal whether the profile lookup returns a name
@@ -144,12 +177,19 @@ async function resolveMetaContact(
         return {} as Record<string, never>
       }
     })()
-    if ('error' in data && data.error) return fallback
-
+    const errored = 'error' in data && Boolean(data.error)
     const fullName = [data.first_name, data.last_name].filter(Boolean).join(' ').trim()
-    const name = data.name || fullName || data.username || senderId
-    const handle = data.username ? `@${data.username}` : senderId
-    return { name, handle }
+    let name = errored ? '' : data.name || fullName || data.username || ''
+    const handle = !errored && data.username ? `@${data.username}` : senderId
+
+    // If the profile lookup gave us no usable name (gated, empty, or errored),
+    // fall back to the Conversations API participant name for Facebook.
+    if (!name && platform === 'facebook') {
+      const convName = await facebookParticipantName(pageId, senderId, token, proofQuery)
+      if (convName) name = convName
+    }
+
+    return { name: name || senderId, handle }
   } catch {
     return fallback
   }

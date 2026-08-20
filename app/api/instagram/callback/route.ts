@@ -126,24 +126,26 @@ export async function GET(request: NextRequest) {
 
               for (const thread of (convData.data ?? []).slice(0, 25)) {
                         const msgsRes = await fetch(
-                                    `https://graph.instagram.com/${META_GRAPH_VERSION}/${thread.id}?fields=messages.limit(20){id,from,message,created_time}&access_token=${accessToken}`
+                                    `https://graph.instagram.com/${META_GRAPH_VERSION}/${thread.id}?fields=messages.limit(20){id,from{id,username},message,created_time}&access_token=${accessToken}`
                                   )
                         const msgsData = await msgsRes.json() as {
-                                    messages?: { data?: { id: string; from: { id: string }; message?: string; created_time: string }[] }
+                                    messages?: { data?: { id: string; from: { id: string; username?: string }; message?: string; created_time: string }[] }
                                     error?: { message: string }
                         }
 
                         const msgs = msgsData.messages?.data ?? []
                         if (msgs.length === 0) continue
 
-                        const otherParticipant = msgs.find((m) => m.from.id !== meData.user_id)?.from.id ?? thread.id
+                        const otherMsg = msgs.find((m) => m.from.id !== meData.user_id)
+                        const otherParticipant = otherMsg?.from.id ?? thread.id
+                        const otherUsername = otherMsg?.from.username
 
                         const { data: conv } = await adminSupabase.from('conversations').upsert(
                           {
                                         platform: 'instagram',
                                         external_thread_id: otherParticipant,
-                                        contact_name: otherParticipant,
-                                        contact_handle: otherParticipant,
+                                        contact_name: otherUsername ?? otherParticipant,
+                                        contact_handle: otherUsername ? `@${otherUsername}` : otherParticipant,
                                         status: 'needs_reply',
                                         last_message_at: msgs[0]?.created_time ?? new Date().toISOString(),
                           },

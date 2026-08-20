@@ -67,11 +67,6 @@ async function sendReply(conv: Record<string, unknown>, body: string): Promise<S
       metaDebug('[reply-debug] stored token had surrounding whitespace — trimmed', rawToken.length, '->', token.length)
     }
 
-    // The token self-test GET (all params in the query string) returns 200, but
-    // every POST variant so far — JSON body, form body, with/without
-    // appsecret_proof — fails with a bare OAuthException code 1, while the
-    // byte-identical Explorer POST succeeds. Mirror the working GET as closely
-    // as possible: pass EVERY param in the query string and send no body.
     const sendPayload: Record<string, unknown> = {
       recipient: { id: conv.external_thread_id },
       message: { text: body },
@@ -80,11 +75,8 @@ async function sendReply(conv: Record<string, unknown>, body: string): Promise<S
       sendPayload.messaging_type = 'RESPONSE'
     }
 
-    // Exactly matches the captured working Explorer request: form-urlencoded
-    // body with the three params (nested values as JSON strings), access_token
-    // in the query string, explicit Content-Type. Shape is confirmed NOT the
-    // variable (this shape already failed), so this is the correct baseline
-    // while we isolate the token value itself.
+    // Send API wants form-urlencoded params with the nested values as JSON
+    // strings and the access_token in the query string.
     const form = new URLSearchParams()
     for (const [key, value] of Object.entries(sendPayload)) {
       form.set(key, typeof value === 'string' ? value : JSON.stringify(value))
@@ -94,27 +86,37 @@ async function sendReply(conv: Record<string, unknown>, body: string): Promise<S
     // proof for server-side Graph calls (Meta increasingly defaults this on).
     const proof = appsecretProof(token, platform as 'facebook' | 'instagram')
     const proofQuery = proof ? `&appsecret_proof=${proof}` : ''
-    const res = await fetch(
-      `https://graph.facebook.com/${META_GRAPH_VERSION}/${conn.account_id}/messages?access_token=${encodeURIComponent(token)}${proofQuery}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          // Same token + shape succeed from the browser but fail server-side
-          // with a 500/code 1. Add browser-like headers to test whether Meta's
-          // edge is filtering bare headerless server POSTs to the Send API.
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36',
-          Accept: 'application/json',
-        },
-        body: form.toString(),
-      }
-    )
+    // Instagram is connected via Instagram Login, so its token is issued by the
+    // Instagram app and ONLY works against graph.instagram.com (me/messages).
+    // Sending IG DMs via graph.facebook.com fails with a bare OAuthException —
+    // this was the unresolved "code 1" for Instagram. Facebook Page tokens use
+    // graph.facebook.com/{page-id}/messages. Route each to its own host.
+    const sendUrl =
+      platform === 'instagram'
+        ? `https://graph.instagram.com/${META_GRAPH_VERSION}/me/messages?access_token=${encodeURIComponent(token)}${proofQuery}`
+        : `https://graph.facebook.com/${META_GRAPH_VERSION}/${conn.account_id}/messages?access_token=${encodeURIComponent(token)}${proofQuery}`
+    const res = await fetch(sendUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Accept: 'application/json',
+      },
+      body: form.toString(),
+    })
     // TEMPORARY DIAGNOSTIC — read the full raw body; the generic code 1 error
     // hides its real cause in error_data/error_user_msg, which JSON-picking
     // `error` alone drops. Log the whole request context + raw response.
     const rawResponse = await res.text()
     let data: {
-      error?: { message: string; code?: number; error_subcode?: number; fbtrace_id?: string }
+      error?: {
+        message: string
+        type?: string
+        code?: number
+        error_subcode?: number
+        error_user_title?: string
+        error_user_msg?: string
+        fbtrace_id?: string
+      }
     } = {}
     try {
       data = JSON.parse(rawResponse)
@@ -122,10 +124,18 @@ async function sendReply(conv: Record<string, unknown>, body: string): Promise<S
       /* non-JSON body — rawResponse logged below */
     }
     if (!res.ok || data.error) {
-      // Operational error line — no message content or token, safe for prod logs.
+      // Operational error line — Meta's own error metadata only (no message
+      // content or token), safe for prod logs. subcode + error_user_msg carry
+      // the real reason a bare "code 1" hides.
       console.error(
-        '[reply] Meta send failed. status:', res.status,
+        '[reply] Meta send failed.',
+        'platform:', platform,
+        '| status:', res.status,
         '| code:', data.error?.code ?? 'n/a',
+        '| subcode:', data.error?.error_subcode ?? 'n/a',
+        '| type:', data.error?.type ?? 'n/a',
+        '| user_title:', data.error?.error_user_title ?? 'n/a',
+        '| user_msg:', data.error?.error_user_msg ?? 'n/a',
         '| fbtrace:', data.error?.fbtrace_id ?? 'n/a'
       )
       // Full context (includes the outbound message body) only when explicitly
