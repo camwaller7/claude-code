@@ -1,6 +1,5 @@
 import { adminSupabase } from '@/lib/supabase/admin'
 import { encryptToken, decryptToken } from '@/lib/crypto/tokenCipher'
-import { META_GRAPH_VERSION } from '@/lib/platform/metaVersion'
 
 // Thrown when a platform has no stored connection. This is a normal state (the
 // user simply hasn't connected that platform), not a failure — scheduled sync
@@ -103,32 +102,24 @@ interface MetaConnection {
   expires_at: string | null
 }
 
-// Facebook/Instagram/Threads long-lived tokens (~60 days) have no refresh_token
-// — they're extended by re-exchanging the still-valid current token for a new
-// one before it expires. Without this, every Meta connection silently dies
-// ~60 days after connecting with no reconnect prompt.
+// Instagram/Threads long-lived tokens (~60 days) have no refresh_token — they're
+// extended by re-exchanging the still-valid current token for a new one before
+// it expires. Without this, those connections silently die ~60 days after
+// connecting with no reconnect prompt.
+//
+// Facebook is different and must NOT be "refreshed" this way: a Page access
+// token derived from a long-lived User token does not expire. The previous code
+// called fb_exchange_token with the *Page* token (that grant expects a *User*
+// token), which returned a broken/short-lived token and made Facebook appear to
+// need constant reconnection. Page tokens are permanent, so we return the stored
+// one as-is; if it's ever actually revoked (password change / de-auth) the send
+// path detects that (isTokenAuthError) and prompts a one-time reconnect.
 async function refreshMetaToken(
   platform: 'facebook' | 'instagram' | 'threads',
   conn: MetaConnection
 ): Promise<string> {
   if (platform === 'facebook') {
-    const params = new URLSearchParams({
-      grant_type: 'fb_exchange_token',
-      client_id: process.env.META_APP_ID!,
-      client_secret: process.env.META_APP_SECRET!,
-      fb_exchange_token: conn.access_token,
-    })
-    const res = await fetch(`https://graph.facebook.com/${META_GRAPH_VERSION}/oauth/access_token?${params.toString()}`)
-    const json = await res.json() as { access_token?: string; expires_in?: number; error?: { message: string } }
-    if (!res.ok || !json.access_token) {
-      throw new Error(`Facebook token refresh failed: ${json.error?.message ?? res.status}`)
-    }
-    const newExpiresAt = json.expires_in ? new Date(Date.now() + json.expires_in * 1000).toISOString() : null
-    await adminSupabase
-      .from('platform_connections')
-      .update({ access_token: encryptToken(json.access_token), expires_at: newExpiresAt })
-      .eq('id', conn.id)
-    return json.access_token
+    return conn.access_token
   }
 
   if (platform === 'instagram') {

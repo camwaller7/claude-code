@@ -67,9 +67,11 @@ export async function GET(request: NextRequest) {
   }
 
   const accessToken = longLivedData.access_token
-  const expiresAt = longLivedData.expires_in
-    ? new Date(Date.now() + longLivedData.expires_in * 1000).toISOString()
-    : null
+  // NOTE: longLivedData.expires_in is the USER token's ~60-day expiry. It does
+  // NOT apply to the Page tokens we actually store below — Page tokens derived
+  // from a long-lived User token are permanent. Stamping the Page connection
+  // with this expiry made the app think it needed refreshing (and reconnecting)
+  // every ~60 days, so Page connections are stored with expires_at: null.
 
   // Get user info
   const meRes = await fetch(
@@ -117,7 +119,7 @@ export async function GET(request: NextRequest) {
         account_id: page.id,
         access_token: encryptToken(page.access_token),
         refresh_token: null,
-        expires_at: expiresAt,
+        expires_at: null, // Page tokens from a long-lived User token don't expire.
         connected_at: connectedAt,
       },
       { onConflict: 'platform,account_id' }
