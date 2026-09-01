@@ -7,6 +7,7 @@ import { decryptToken } from '@/lib/crypto/tokenCipher'
 import { META_GRAPH_VERSION } from '@/lib/platform/metaVersion'
 import { metaDebug } from '@/lib/log/debug'
 import { appsecretProof } from '@/lib/platform/appsecretProof'
+import { zernioEnabled, sendZernioMessage } from '@/lib/platform/zernio'
 
 const META_MESSAGING_WINDOW_MS = 24 * 60 * 60 * 1000
 
@@ -20,6 +21,17 @@ async function sendReply(conv: Record<string, unknown>, body: string): Promise<S
   const platform = conv.platform as string
 
   if (platform === 'instagram' || platform === 'facebook') {
+    // When Zernio is the messaging provider, send through its unified inbox.
+    // external_thread_id holds Zernio's conversationId (see the Zernio webhook).
+    // Zernio/Meta still enforce the 24h window server-side and return an error
+    // we surface, so no separate window check is needed here.
+    if (zernioEnabled()) {
+      const r = await sendZernioMessage(conv.external_thread_id as string, body)
+      return r.ok
+        ? { ok: true, status: 'sent' }
+        : { ok: false, status: 'failed', error: r.error ?? 'Zernio send failed' }
+    }
+
     // Meta requires an inbound message within the last 24h (or an approved
     // message tag, which this app doesn't implement) to send outside a live
     // human-agent window. Enforce it here rather than letting Meta silently
