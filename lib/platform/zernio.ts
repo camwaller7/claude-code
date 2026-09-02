@@ -85,18 +85,25 @@ export function getZernioConnectUrl(platform: ZernioPlatform, redirectUrl?: stri
   })
 }
 
-// Send a DM reply into an existing Zernio conversation. The conversation
-// implies the sending account, so no accountId is required here.
-//
-// Zernio's send endpoint rejected a `{ message }` body with a Zod
-// "expected string, received undefined" error, meaning it reads the reply text
-// from a differently-named field. Its schema ignores unknown keys (it did not
-// complain about the extra `message` key), so we send the text under every
-// common alias — the one Zernio expects is picked up and the rest are ignored.
-export function sendZernioMessage(conversationId: string, message: string) {
+// Resolve the Zernio social-account id for a platform. This is a single-creator
+// app with one connected account per platform, so the first match wins. Zernio's
+// send endpoint requires `accountId` (the sending account) even though the
+// conversation already implies it.
+export async function resolveZernioAccountId(platform: string): Promise<string | undefined> {
+  const res = await listZernioAccounts()
+  if (!res.ok || !res.data) return undefined
+  const accounts = Array.isArray(res.data) ? res.data : res.data.accounts ?? []
+  return accounts.find((a) => a.platform === platform)?.id
+}
+
+// Send a DM reply into an existing Zernio conversation. Zernio's send schema
+// requires `accountId` (the sending social account) as a required string, plus
+// the optional `message` text — omitting accountId is what returned the
+// "expected string, received undefined" validation error.
+export function sendZernioMessage(conversationId: string, accountId: string, message: string) {
   return zernioFetch<{ id: string }>(
     `/v1/inbox/conversations/${conversationId}/messages`,
-    { method: 'POST', body: { message, text: message, content: message, body: message } }
+    { method: 'POST', body: { accountId, message } }
   )
 }
 

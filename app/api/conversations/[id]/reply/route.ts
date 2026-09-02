@@ -7,7 +7,7 @@ import { decryptToken } from '@/lib/crypto/tokenCipher'
 import { META_GRAPH_VERSION } from '@/lib/platform/metaVersion'
 import { metaDebug } from '@/lib/log/debug'
 import { appsecretProof } from '@/lib/platform/appsecretProof'
-import { zernioEnabled, sendZernioMessage } from '@/lib/platform/zernio'
+import { zernioEnabled, sendZernioMessage, resolveZernioAccountId } from '@/lib/platform/zernio'
 
 const META_MESSAGING_WINDOW_MS = 24 * 60 * 60 * 1000
 
@@ -26,7 +26,13 @@ async function sendReply(conv: Record<string, unknown>, body: string): Promise<S
     // Zernio/Meta still enforce the 24h window server-side and return an error
     // we surface, so no separate window check is needed here.
     if (zernioEnabled()) {
-      const r = await sendZernioMessage(conv.external_thread_id as string, body)
+      // Zernio's send endpoint requires the sending accountId. One account per
+      // platform in this single-creator app, so resolve it by platform.
+      const accountId = await resolveZernioAccountId(platform)
+      if (!accountId) {
+        return { ok: false, status: 'failed', error: `No Zernio ${platform} account is connected to send from.` }
+      }
+      const r = await sendZernioMessage(conv.external_thread_id as string, accountId, body)
       return r.ok
         ? { ok: true, status: 'sent' }
         : { ok: false, status: 'failed', error: r.error ?? 'Zernio send failed' }
