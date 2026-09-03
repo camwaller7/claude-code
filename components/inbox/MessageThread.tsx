@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Message, Conversation } from '@/types'
 import { cn, formatTime } from '@/lib/utils'
 
@@ -50,6 +50,20 @@ function MessageBubble({ message }: { message: Message }) {
 }
 
 export function MessageThread({ messages }: Props) {
+  // Open the thread scrolled to the most recent message (chat convention),
+  // rather than at the oldest one. Jump instantly on load; smooth-scroll when
+  // new messages arrive in the same view.
+  const bottomRef = useRef<HTMLDivElement>(null)
+  const didInitialScroll = useRef(false)
+  useEffect(() => {
+    if (messages.length === 0) return
+    bottomRef.current?.scrollIntoView({
+      block: 'end',
+      behavior: didInitialScroll.current ? 'smooth' : 'auto',
+    })
+    didInitialScroll.current = true
+  }, [messages.length])
+
   if (messages.length === 0) {
     return (
       <div className="flex h-48 items-center justify-center rounded-lg border border-dashed">
@@ -63,6 +77,7 @@ export function MessageThread({ messages }: Props) {
       {messages.map((message) => (
         <MessageBubble key={message.id} message={message} />
       ))}
+      <div ref={bottomRef} />
     </div>
   )
 }
