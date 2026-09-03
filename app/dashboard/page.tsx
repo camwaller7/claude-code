@@ -6,6 +6,7 @@ import { DashboardClient } from '@/components/dashboard/DashboardClient'
 import { WelcomeFlow } from '@/components/onboarding/WelcomeFlow'
 import { AudiencePanel } from '@/components/dashboard/AudiencePanel'
 import { getContentAnalytics } from '@/lib/analytics/stats'
+import { getLinkedPlatforms } from '@/lib/platform/linked'
 
 export default async function DashboardPage() {
   await requireAuth()
@@ -23,13 +24,23 @@ export default async function DashboardPage() {
     supabase.from('deals').select('deal_value, created_at').eq('status', 'paid'),
     supabase.from('deals').select('deal_value, status').in('status', ['inquiry', 'negotiating', 'contracted', 'delivered']),
     supabase.from('deals').select('status, deal_value, created_at'),
-    supabase.from('conversations').select('category, status, last_message_at, created_at'),
+    supabase.from('conversations').select('platform, category, status, last_message_at, created_at'),
     supabase.from('clients').select('status, created_at'),
     supabase.from('posts').select('status, created_at, scheduled_at'),
-    supabase.from('messages').select('created_at, direction').order('created_at', { ascending: false }).limit(200),
+    supabase.from('messages').select('created_at, direction, conversation:conversations(platform)').order('created_at', { ascending: false }).limit(200),
   ])
 
-  const analytics = await getContentAnalytics().catch(() => null)
+  const [analytics, linkedPlatforms] = await Promise.all([
+    getContentAnalytics().catch(() => null),
+    getLinkedPlatforms().catch(() => []),
+  ])
+
+  // Flatten the embedded conversation platform onto each message row.
+  const messages = (recentMessages ?? []).map((m) => {
+    const conv = (m as { conversation?: { platform?: string } | { platform?: string }[] }).conversation
+    const platform = Array.isArray(conv) ? conv[0]?.platform : conv?.platform
+    return { created_at: m.created_at, direction: m.direction, platform: platform ?? null }
+  })
 
   return (
     <>
@@ -46,7 +57,8 @@ export default async function DashboardPage() {
       allConversations={allConversations ?? []}
       allClients={allClients ?? []}
       allPosts={allPosts ?? []}
-      recentMessages={recentMessages ?? []}
+      recentMessages={messages}
+      linkedPlatforms={linkedPlatforms}
     />
     </>
   )

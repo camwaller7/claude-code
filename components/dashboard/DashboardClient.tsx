@@ -1,17 +1,29 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { TrendingUp, TrendingDown, Minus, DollarSign, MessageCircle, Users, Send, Inbox, Star, Zap } from 'lucide-react'
+import type { Platform } from '@/types'
 
 interface Props {
   paidDeals: { deal_value: number | null; created_at: string }[]
   pipelineDeals: { deal_value: number | null; status: string }[]
   allDeals: { status: string; deal_value: number | null; created_at: string }[]
-  allConversations: { category: string; status: string; last_message_at: string; created_at: string }[]
+  allConversations: { platform: string; category: string; status: string; last_message_at: string; created_at: string }[]
   allClients: { status: string; created_at: string }[]
   allPosts: { status: string; created_at: string; scheduled_at: string | null }[]
-  recentMessages: { created_at: string; direction: string }[]
+  recentMessages: { created_at: string; direction: string; platform: string | null }[]
+  linkedPlatforms: Platform[]
+}
+
+const PLATFORM_LABELS: Record<string, string> = {
+  instagram: 'Instagram',
+  facebook: 'Facebook',
+  x: 'X',
+  threads: 'Threads',
+  tiktok: 'TikTok',
+  gmail: 'Gmail',
+  telegram: 'Telegram',
 }
 
 function fmt(n: number) {
@@ -88,25 +100,38 @@ function StatCard({
   )
 }
 
-export function DashboardClient({ paidDeals, pipelineDeals, allDeals, allConversations, allClients, allPosts, recentMessages }: Props) {
+export function DashboardClient({ paidDeals, pipelineDeals, allDeals, allConversations, allClients, allPosts, recentMessages, linkedPlatforms }: Props) {
+  // Platform filter — scopes the inbox/message widgets to a single linked
+  // account. Only linked platforms are offered (plus "All"). Financial widgets
+  // (revenue, pipeline, clients, posts) are not platform-specific and stay global.
+  const [platform, setPlatform] = useState<Platform | 'all'>('all')
+  const conversations = useMemo(
+    () => (platform === 'all' ? allConversations : allConversations.filter(c => c.platform === platform)),
+    [allConversations, platform]
+  )
+  const messages = useMemo(
+    () => (platform === 'all' ? recentMessages : recentMessages.filter(m => m.platform === platform)),
+    [recentMessages, platform]
+  )
+
   const totalRevenue = paidDeals.reduce((s, d) => s + (d.deal_value ?? 0), 0)
   const pipelineValue = pipelineDeals.reduce((s, d) => s + (d.deal_value ?? 0), 0)
   const wonDeals = allDeals.filter(d => d.status === 'paid').length
   const closedDeals = allDeals.filter(d => ['paid', 'lost'].includes(d.status)).length
   const winRate = closedDeals > 0 ? Math.round((wonDeals / closedDeals) * 100) : 0
-  const needsReply = allConversations.filter(c => c.status === 'needs_reply').length
+  const needsReply = conversations.filter(c => c.status === 'needs_reply').length
   const activeClients = allClients.filter(c => c.status === 'active').length
   const publishedPosts = allPosts.filter(p => p.status === 'published').length
   const scheduledPosts = allPosts.filter(p => p.status === 'scheduled').length
-  const brandDeals = allConversations.filter(c => c.category === 'brand_deal').length
+  const brandDeals = conversations.filter(c => c.category === 'brand_deal').length
 
   // Messages per day for last 7 days
   const days = getLast7Days()
   const messagesByDay = useMemo(() => days.map(day => ({
     day: getShortDay(day),
-    inbound: recentMessages.filter(m => m.created_at.startsWith(day) && m.direction === 'inbound').length,
-    outbound: recentMessages.filter(m => m.created_at.startsWith(day) && m.direction === 'outbound').length,
-  })), [recentMessages])
+    inbound: messages.filter(m => m.created_at.startsWith(day) && m.direction === 'inbound').length,
+    outbound: messages.filter(m => m.created_at.startsWith(day) && m.direction === 'outbound').length,
+  })), [messages])
 
   // Revenue trend (deals paid per day)
   const revByDay = useMemo(() => days.map(day => ({
@@ -117,9 +142,9 @@ export function DashboardClient({ paidDeals, pipelineDeals, allDeals, allConvers
   // Inbox category breakdown
   const categoryData = useMemo(() => {
     const counts: Record<string, number> = {}
-    allConversations.forEach(c => { counts[c.category] = (counts[c.category] ?? 0) + 1 })
+    conversations.forEach(c => { counts[c.category] = (counts[c.category] ?? 0) + 1 })
     return Object.entries(counts).map(([name, value]) => ({ name, value }))
-  }, [allConversations])
+  }, [conversations])
 
   // Deal pipeline breakdown
   const dealPipelineData = useMemo(() => {
@@ -145,6 +170,27 @@ export function DashboardClient({ paidDeals, pipelineDeals, allDeals, allConvers
         </div>
       </div>
 
+      {/* Platform filter — only linked accounts are shown. Scopes the inbox and
+          message widgets below. */}
+      {linkedPlatforms.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-xs font-medium text-muted-foreground mr-1">Platform:</span>
+          {(['all', ...linkedPlatforms] as const).map(value => (
+            <button
+              key={value}
+              onClick={() => setPlatform(value as Platform | 'all')}
+              className={`rounded-full border px-3 py-0.5 text-xs transition-colors ${
+                platform === value
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'border-input bg-background text-foreground hover:bg-accent'
+              }`}
+            >
+              {value === 'all' ? 'All' : PLATFORM_LABELS[value] ?? value}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Stat cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard icon={DollarSign} label="Total Revenue" value={fmt(totalRevenue)} sub="from paid deals" color="bg-gradient-to-br from-violet-500 to-purple-600" trend="up" />
@@ -154,10 +200,10 @@ export function DashboardClient({ paidDeals, pipelineDeals, allDeals, allConvers
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard icon={Inbox} label="Needs Reply" value={String(needsReply)} sub={`${allConversations.length} total threads`} color="bg-gradient-to-br from-pink-500 to-rose-500" trend={needsReply > 5 ? 'up' : 'flat'} />
+        <StatCard icon={Inbox} label="Needs Reply" value={String(needsReply)} sub={`${conversations.length} total threads`} color="bg-gradient-to-br from-pink-500 to-rose-500" trend={needsReply > 5 ? 'up' : 'flat'} />
         <StatCard icon={MessageCircle} label="Brand Deals" value={String(brandDeals)} sub="in your inbox" color="bg-gradient-to-br from-indigo-500 to-violet-500" trend="up" />
         <StatCard icon={Send} label="Posts Published" value={String(publishedPosts)} sub={`${scheduledPosts} scheduled`} color="bg-gradient-to-br from-sky-400 to-blue-500" trend="flat" />
-        <StatCard icon={Zap} label="Total Threads" value={fmtNum(allConversations.length)} sub="across all platforms" color="bg-gradient-to-br from-fuchsia-500 to-pink-500" trend="up" />
+        <StatCard icon={Zap} label="Total Threads" value={fmtNum(conversations.length)} sub={platform === 'all' ? 'across all platforms' : `on ${PLATFORM_LABELS[platform] ?? platform}`} color="bg-gradient-to-br from-fuchsia-500 to-pink-500" trend="up" />
       </div>
 
       {/* Charts row */}
