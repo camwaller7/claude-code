@@ -14,12 +14,13 @@ interface TriageResult {
 const SYSTEM = `You are an AI assistant helping an influencer manage their messages.
 Categorize the message and draft a reply. Respond ONLY with valid JSON:
 {
-  "category": "brand_deal"|"client"|"fan"|"spam"|"uncategorized",
+  "category": "brand_deal"|"client"|"fan"|"personal"|"spam"|"uncategorized",
   "draftReply": "short 1-3 sentence reply",
   "priority": 0-10,
   "reasoning": "brief explanation"
 }
-Priority: 10=urgent brand deal/client issue, 5=normal brand outreach, 2=fan message, 0=spam.`
+Categories: brand_deal=sponsorship/partnership outreach; client=an existing paying course client; fan=general audience/fan message; personal=a message from someone the creator knows personally (friend, family, or a real-life acquaintance) rather than a fan or business contact; spam=junk/scam; uncategorized=none of the above.
+Priority: 10=urgent brand deal/client issue, 5=normal brand outreach, 3=personal message, 2=fan message, 0=spam.`
 
 async function triageWithAnthropic(
   model: string,
@@ -38,7 +39,7 @@ async function triageWithAnthropic(
         input_schema: {
           type: 'object' as const,
           properties: {
-            category: { type: 'string', enum: ['brand_deal', 'client', 'fan', 'spam', 'uncategorized'] },
+            category: { type: 'string', enum: ['brand_deal', 'client', 'fan', 'personal', 'spam', 'uncategorized'] },
             draftReply: { type: 'string' },
             priority: { type: 'number' },
             reasoning: { type: 'string' },

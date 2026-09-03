@@ -1,6 +1,6 @@
 export type Platform = 'instagram' | 'facebook' | 'x' | 'threads' | 'tiktok' | 'gmail' | 'telegram'
 
-export type MessageCategory = 'brand_deal' | 'client' | 'fan' | 'spam' | 'uncategorized'
+export type MessageCategory = 'brand_deal' | 'client' | 'fan' | 'personal' | 'spam' | 'uncategorized'
 
 export type MessageStatus = 'needs_reply' | 'replied' | 'archived'
 

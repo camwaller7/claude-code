@@ -40,6 +40,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   brand_deal: '#a78bfa',
   client: '#34d399',
   fan: '#60a5fa',
+  personal: '#fbbf24',
   spam: '#f87171',
   uncategorized: '#94a3b8',
 }

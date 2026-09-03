@@ -61,18 +61,58 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true }, { status: 200 })
   }
 
-  // Only ingest inbound messages; ignore echoes of our own sends and other events.
+  // Ingest inbound messages (message.received) and the creator's own outbound
+  // replies (message.sent) — the latter captures replies sent from the native
+  // app (e.g. Instagram on the phone) so the app shows the full conversation.
   const msg = payload.message
-  if (payload.event !== 'message.received' || !msg || msg.direction !== 'incoming') {
+  const isIncoming = payload.event === 'message.received' && msg?.direction === 'incoming'
+  const isOutgoing = payload.event === 'message.sent'
+  if (!msg || (!isIncoming && !isOutgoing)) {
     return NextResponse.json({ received: true }, { status: 200 })
   }
 
   try {
     const platform = msg.platform as Platform
+    const text = msg.text ?? ''
+    const now = new Date().toISOString()
+
+    if (isOutgoing) {
+      // On message.sent the "sender" is our own business account, NOT the
+      // contact — do not touch contact_name/handle. Only update an EXISTING
+      // conversation (a thread always begins with an inbound message), record
+      // the outbound message, and mark it replied. No triage on our own sends.
+      const { data: conv } = await adminSupabase
+        .from('conversations')
+        .select('id')
+        .eq('platform', platform)
+        .eq('external_thread_id', msg.conversationId)
+        .maybeSingle()
+
+      if (!conv) return NextResponse.json({ received: true }, { status: 200 })
+
+      await adminSupabase.from('messages').upsert(
+        {
+          conversation_id: conv.id,
+          direction: 'outbound',
+          body: text,
+          external_message_id: msg.platformMessageId || msg.id,
+          sent_at: now,
+        },
+        { onConflict: 'external_message_id', ignoreDuplicates: true }
+      )
+
+      await adminSupabase
+        .from('conversations')
+        .update({ status: 'replied', last_message_at: now })
+        .eq('id', conv.id)
+
+      return NextResponse.json({ received: true }, { status: 200 })
+    }
+
+    // Inbound (message.received): the sender is the contact.
     const sender = msg.sender
     const name = sender?.name || sender?.username || sender?.id || 'Unknown'
     const handle = sender?.username ? `@${sender.username}` : sender?.id ?? ''
-    const text = msg.text ?? ''
 
     // external_thread_id is Zernio's conversationId so replies can be sent back
     // via POST /v1/inbox/conversations/{conversationId}/messages.
@@ -85,7 +125,7 @@ export async function POST(request: NextRequest) {
           contact_name: name,
           contact_handle: handle,
           status: 'needs_reply',
-          last_message_at: new Date().toISOString(),
+          last_message_at: now,
         },
         { onConflict: 'platform,external_thread_id' }
       )
@@ -100,7 +140,7 @@ export async function POST(request: NextRequest) {
         direction: 'inbound',
         body: text,
         external_message_id: msg.platformMessageId || msg.id,
-        sent_at: new Date().toISOString(),
+        sent_at: now,
       },
       { onConflict: 'external_message_id', ignoreDuplicates: true }
     )

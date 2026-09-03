@@ -23,6 +23,7 @@ const CATEGORY_OPTIONS: { value: MessageCategory; label: string }[] = [
   { value: 'brand_deal', label: 'Brand deal' },
   { value: 'client', label: 'Client' },
   { value: 'fan', label: 'Fan' },
+  { value: 'personal', label: 'Personal' },
   { value: 'spam', label: 'Spam' },
 ]
 

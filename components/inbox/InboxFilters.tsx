@@ -18,6 +18,7 @@ const CATEGORIES: { value: MessageCategory | 'all'; label: string }[] = [
   { value: 'brand_deal', label: 'Brand Deal' },
   { value: 'client', label: 'Client' },
   { value: 'fan', label: 'Fan' },
+  { value: 'personal', label: 'Personal' },
   { value: 'spam', label: 'Spam' },
   { value: 'uncategorized', label: 'Uncategorized' },
 ]

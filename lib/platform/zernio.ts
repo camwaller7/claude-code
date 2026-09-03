@@ -115,7 +115,9 @@ export function configureZernioWebhook(url: string, secret: string) {
       name: 'Creator PA inbox',
       url,
       secret,
-      events: ['message.received', 'conversation.started'],
+      // message.sent captures replies the creator sends from the native app
+      // (e.g. the Instagram app on their phone) so the full thread shows.
+      events: ['message.received', 'message.sent', 'conversation.started'],
     },
   })
 }
