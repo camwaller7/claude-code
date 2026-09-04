@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { adminSupabase } from '@/lib/supabase/admin'
 import { getLLMSettings, logTokenUsage } from '@/lib/llm/settings'
 import { llmComplete } from '@/lib/llm/client'
+import { checkAIBudget } from '@/lib/llm/budget'
 import type { MessageCategory } from '@/types'
 
 interface TriageResult {
@@ -32,6 +33,9 @@ async function triageWithAnthropic(
   const res = await client.messages.create({
     model,
     max_tokens: 512,
+    // The system prompt + tool schema are identical on every triage call, so
+    // cache them: after the first call they're reused at ~10% of input price.
+    system: [{ type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } }],
     tools: [
       {
         name: 'triage_message',
@@ -46,6 +50,7 @@ async function triageWithAnthropic(
           },
           required: ['category', 'draftReply', 'priority', 'reasoning'],
         },
+        cache_control: { type: 'ephemeral' },
       },
     ],
     tool_choice: { type: 'tool', name: 'triage_message' },
@@ -86,6 +91,14 @@ export async function triageMessage(
   contactName: string,
   platform: string
 ): Promise<TriageResult> {
+  // Respect the monthly AI spend cap. Triage runs on every inbound message, so
+  // if the budget is spent we skip the LLM call and leave the message
+  // uncategorized rather than failing ingest or blowing past the limit.
+  const budget = await checkAIBudget()
+  if (budget.over) {
+    return { category: 'uncategorized', draftReply: '', priority: 0, reasoning: 'AI budget reached' }
+  }
+
   const { provider, model } = await getLLMSettings()
 
   const result = provider === 'anthropic'

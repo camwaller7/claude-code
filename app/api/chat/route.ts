@@ -7,6 +7,7 @@ import { getReminders } from '@/lib/reminders/engine'
 import { auditLog } from '@/lib/audit/log'
 import { getLLMSettings, logTokenUsage } from '@/lib/llm/settings'
 import { llmComplete } from '@/lib/llm/client'
+import { checkAIBudget } from '@/lib/llm/budget'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -362,6 +363,15 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  // Monthly AI spend cap — refuse before spending when the budget is reached.
+  const budget = await checkAIBudget()
+  if (budget.over) {
+    return new Response(
+      "You've reached this month's AI usage limit. It resets at the start of next month — or upgrade your plan for a higher limit.",
+      { headers: { 'Content-Type': 'text/plain; charset=utf-8' } }
+    )
+  }
+
   const encoder = new TextEncoder()
 
   const stream = new ReadableStream({
@@ -370,6 +380,18 @@ export async function POST(request: NextRequest) {
 
       // The Anthropic agentic tool loop, factored out so it can serve as the
       // primary path and as the fallback for a failed non-Anthropic provider.
+      // Prompt caching: the system prompt and the full tool schema are large and
+      // identical on every turn (and across every user's requests). Marking them
+      // cacheable lets Anthropic reuse them at ~10% of the input price on cache
+      // hits, which is the dominant cost in this multi-turn tool loop. The cache
+      // breakpoint on the system block covers the tools + system prefix.
+      const cachedSystem: Anthropic.TextBlockParam[] = [
+        { type: 'text', text: system, cache_control: { type: 'ephemeral' } },
+      ]
+      const cachedTools: Anthropic.ToolUnion[] = tools.map((t, i) =>
+        i === tools.length - 1 ? { ...t, cache_control: { type: 'ephemeral' } } : t
+      )
+
       const runAnthropicLoop = async (model: string) => {
         let currentMessages = [...messages]
         let inputTokens = 0
@@ -379,8 +401,8 @@ export async function POST(request: NextRequest) {
           const anthropicStream = anthropic.messages.stream({
             model,
             max_tokens: 1500,
-            system,
-            tools,
+            system: cachedSystem,
+            tools: cachedTools,
             messages: currentMessages,
           })
 
