@@ -57,11 +57,19 @@ export function MessageThread({ messages }: Props) {
   const didInitialScroll = useRef(false)
   useEffect(() => {
     if (messages.length === 0) return
-    bottomRef.current?.scrollIntoView({
-      block: 'end',
-      behavior: didInitialScroll.current ? 'smooth' : 'auto',
+    // Defer past the App Router's post-navigation scroll-to-top reset (which
+    // runs after this effect), otherwise it clobbers our scroll and the thread
+    // opens at the oldest message. Two rAFs land us after layout + that reset.
+    const raf = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        bottomRef.current?.scrollIntoView({
+          block: 'end',
+          behavior: didInitialScroll.current ? 'smooth' : 'auto',
+        })
+        didInitialScroll.current = true
+      })
     })
-    didInitialScroll.current = true
+    return () => cancelAnimationFrame(raf)
   }, [messages.length])
 
   if (messages.length === 0) {
