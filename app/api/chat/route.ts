@@ -42,9 +42,9 @@ const tools: Anthropic.Tool[] = [
     input_schema: {
       type: 'object' as const,
       properties: {
-        category: { type: 'string', enum: ['brand_deal', 'client', 'fan', 'spam', 'uncategorized'] },
+        category: { type: 'string', enum: ['brand_deal', 'client', 'fan', 'personal', 'spam', 'uncategorized'] },
         status: { type: 'string', enum: ['needs_reply', 'replied', 'archived'] },
-        platform: { type: 'string', enum: ['instagram', 'facebook', 'x', 'gmail'] },
+        platform: { type: 'string', enum: ['instagram', 'facebook', 'x', 'gmail', 'telegram'] },
         limit: { type: 'number', description: 'Max results (default 25)' },
       },
     },
@@ -347,9 +347,17 @@ export async function POST(request: NextRequest) {
     google: process.env.GOOGLE_AI_API_KEY,
     groq: process.env.GROQ_API_KEY,
   }
-  if (!keyByProvider[llm.provider]) {
+
+  // Anthropic is the app's primary provider — it's the only path that runs the
+  // full tool loop (reading conversations, analytics, deals, etc.), and its key
+  // powers the rest of the app. Use it as the fallback whenever the selected
+  // provider has no key or errors at request time (e.g. a model the key can't
+  // access), so the assistant keeps working instead of showing a raw API error.
+  const FALLBACK_ANTHROPIC_MODEL = 'claude-sonnet-4-6'
+  const canUseSelected = Boolean(keyByProvider[llm.provider])
+  if (!canUseSelected && !keyByProvider.anthropic) {
     return NextResponse.json(
-      { error: `The selected AI provider (${llm.provider}) has no API key configured. Add it in Railway variables or pick a different model in Settings.` },
+      { error: `The selected AI provider (${llm.provider}) has no API key configured. Add it or pick a different model in Settings.` },
       { status: 500 }
     )
   }
@@ -359,70 +367,92 @@ export async function POST(request: NextRequest) {
   const stream = new ReadableStream({
     async start(controller) {
       const push = (text: string) => controller.enqueue(encoder.encode(text))
-      try {
-        if (llm.provider === 'anthropic') {
-          // Full agentic tool loop with token-level streaming
-          let currentMessages = [...messages]
-          let inputTokens = 0
-          let outputTokens = 0
 
-          for (let i = 0; i < 6; i++) {
-            const anthropicStream = anthropic.messages.stream({
-              model: llm.model,
-              max_tokens: 1500,
-              system,
-              tools,
-              messages: currentMessages,
-            })
+      // The Anthropic agentic tool loop, factored out so it can serve as the
+      // primary path and as the fallback for a failed non-Anthropic provider.
+      const runAnthropicLoop = async (model: string) => {
+        let currentMessages = [...messages]
+        let inputTokens = 0
+        let outputTokens = 0
 
-            anthropicStream.on('text', (delta) => push(delta))
-
-            const res = await anthropicStream.finalMessage()
-            inputTokens += res.usage.input_tokens
-            outputTokens += res.usage.output_tokens
-
-            if (res.stop_reason === 'tool_use') {
-              const toolUses = res.content.filter(b => b.type === 'tool_use') as Anthropic.ToolUseBlock[]
-              const toolResults: Anthropic.ToolResultBlockParam[] = await Promise.all(
-                toolUses.map(async tu => ({
-                  type: 'tool_result' as const,
-                  tool_use_id: tu.id,
-                  content: await runTool(tu.name, tu.input as Record<string, unknown>),
-                }))
-              )
-              currentMessages = [
-                ...currentMessages,
-                { role: 'assistant' as const, content: res.content },
-                { role: 'user' as const, content: toolResults },
-              ]
-              continue
-            }
-            break
-          }
-          await logTokenUsage('anthropic', llm.model, 'chat', inputTokens, outputTokens).catch(() => {})
-        } else {
-          // Other providers don't run our tool loop — give them a live data
-          // snapshot as context instead, so answers still use real data.
-          const [stats, analytics, convs] = await Promise.all([
-            runTool('get_business_stats', {}),
-            runTool('get_content_analytics', {}),
-            runTool('list_conversations', { limit: 15 }),
-          ])
-          const contextBlock = `LIVE DATA SNAPSHOT (use this to answer):\nBUSINESS STATS: ${stats}\nCONTENT ANALYTICS: ${analytics}\nRECENT CONVERSATIONS: ${convs}`
-
-          const history = messages
-            .map(m => `${m.role === 'user' ? 'Creator' : 'Assistant'}: ${typeof m.content === 'string' ? m.content : ''}`)
-            .join('\n')
-
-          const { text, inputTokens, outputTokens } = await llmComplete({
-            provider: llm.provider,
-            model: llm.model,
-            system: `${system}\n\n${contextBlock}`,
-            prompt: history,
-            maxTokens: 1500,
+        for (let i = 0; i < 6; i++) {
+          const anthropicStream = anthropic.messages.stream({
+            model,
+            max_tokens: 1500,
+            system,
+            tools,
+            messages: currentMessages,
           })
-          push(text)
-          await logTokenUsage(llm.provider, llm.model, 'chat', inputTokens, outputTokens).catch(() => {})
+
+          anthropicStream.on('text', (delta) => push(delta))
+
+          const res = await anthropicStream.finalMessage()
+          inputTokens += res.usage.input_tokens
+          outputTokens += res.usage.output_tokens
+
+          if (res.stop_reason === 'tool_use') {
+            const toolUses = res.content.filter(b => b.type === 'tool_use') as Anthropic.ToolUseBlock[]
+            const toolResults: Anthropic.ToolResultBlockParam[] = await Promise.all(
+              toolUses.map(async tu => ({
+                type: 'tool_result' as const,
+                tool_use_id: tu.id,
+                content: await runTool(tu.name, tu.input as Record<string, unknown>),
+              }))
+            )
+            currentMessages = [
+              ...currentMessages,
+              { role: 'assistant' as const, content: res.content },
+              { role: 'user' as const, content: toolResults },
+            ]
+            continue
+          }
+          break
+        }
+        await logTokenUsage('anthropic', model, 'chat', inputTokens, outputTokens).catch(() => {})
+      }
+
+      const runOtherProvider = async () => {
+        // Other providers don't run our tool loop — give them a live data
+        // snapshot as context instead, so answers still use real data.
+        const [stats, analytics, convs] = await Promise.all([
+          runTool('get_business_stats', {}),
+          runTool('get_content_analytics', {}),
+          runTool('list_conversations', { limit: 15 }),
+        ])
+        const contextBlock = `LIVE DATA SNAPSHOT (use this to answer):\nBUSINESS STATS: ${stats}\nCONTENT ANALYTICS: ${analytics}\nRECENT CONVERSATIONS: ${convs}`
+
+        const history = messages
+          .map(m => `${m.role === 'user' ? 'Creator' : 'Assistant'}: ${typeof m.content === 'string' ? m.content : ''}`)
+          .join('\n')
+
+        const { text, inputTokens, outputTokens } = await llmComplete({
+          provider: llm.provider,
+          model: llm.model,
+          system: `${system}\n\n${contextBlock}`,
+          prompt: history,
+          maxTokens: 1500,
+        })
+        push(text)
+        await logTokenUsage(llm.provider, llm.model, 'chat', inputTokens, outputTokens).catch(() => {})
+      }
+
+      try {
+        if (llm.provider === 'anthropic' || !canUseSelected) {
+          await runAnthropicLoop(llm.provider === 'anthropic' ? llm.model : FALLBACK_ANTHROPIC_MODEL)
+        } else {
+          try {
+            await runOtherProvider()
+          } catch (providerErr) {
+            // The selected provider/model failed (e.g. a 404 for a model the
+            // key can't access). Fall back to Anthropic so the user still gets
+            // an answer rather than an error.
+            console.error('[chat] selected provider failed, falling back to Anthropic:', providerErr)
+            if (keyByProvider.anthropic) {
+              await runAnthropicLoop(FALLBACK_ANTHROPIC_MODEL)
+            } else {
+              throw providerErr
+            }
+          }
         }
       } catch (e) {
         console.error('[chat] stream error:', e)
