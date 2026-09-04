@@ -66,10 +66,19 @@ async function zernioFetch<T>(
 }
 
 export interface ZernioAccount {
-  id: string
+  // Zernio returns Mongo documents keyed by `_id`; some responses also mirror
+  // it as `id`. Accept either so the sending-account lookup is robust.
+  _id?: string
+  id?: string
   platform: ZernioPlatform | string
   username?: string
   name?: string
+  displayName?: string
+}
+
+// The id of an account, whichever key Zernio used on this response.
+export function zernioAccountId(a: ZernioAccount): string | undefined {
+  return a._id ?? a.id
 }
 
 // List the social accounts connected to this Zernio workspace.
@@ -93,7 +102,10 @@ export async function resolveZernioAccountId(platform: string): Promise<string |
   const res = await listZernioAccounts()
   if (!res.ok || !res.data) return undefined
   const accounts = Array.isArray(res.data) ? res.data : res.data.accounts ?? []
-  return accounts.find((a) => a.platform === platform)?.id
+  // Zernio reports X as "twitter"; match either label for our "x".
+  const aliases = platform === 'x' ? ['x', 'twitter'] : [platform]
+  const match = accounts.find((a) => aliases.includes(String(a.platform)))
+  return match ? zernioAccountId(match) : undefined
 }
 
 // Send a DM reply into an existing Zernio conversation. Zernio's send schema
