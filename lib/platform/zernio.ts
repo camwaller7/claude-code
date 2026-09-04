@@ -107,6 +107,58 @@ export function sendZernioMessage(conversationId: string, accountId: string, mes
   )
 }
 
+// ─── Analytics ──────────────────────────────────────────────────────────────
+// Zernio's unified analytics endpoint returns published-post metrics plus the
+// connected accounts' follower counts, replacing the direct Meta Graph insights
+// pull. followersCount / analytics require the account's Zernio analytics add-on
+// (hasAnalyticsAccess reports whether it's enabled).
+
+export interface ZernioPostAnalytics {
+  impressions?: number
+  reach?: number
+  likes?: number
+  comments?: number
+  shares?: number
+  saves?: number
+  views?: number
+  clicks?: number
+  follows?: number | null
+}
+
+export interface ZernioAnalyticsPost {
+  _id?: string
+  content?: string
+  publishedAt?: string
+  status?: string
+  platform?: string
+  platformPostUrl?: string
+  mediaType?: string
+  mediaProductType?: string
+  analytics?: ZernioPostAnalytics
+}
+
+export interface ZernioAnalyticsAccount {
+  _id?: string
+  platform?: string
+  username?: string
+  followersCount?: number
+}
+
+export interface ZernioAnalyticsResponse {
+  posts?: ZernioAnalyticsPost[]
+  accounts?: ZernioAnalyticsAccount[]
+  hasAnalyticsAccess?: boolean
+}
+
+// Fetch published-post analytics and connected-account follower counts.
+export function getZernioAnalytics(params?: { limit?: number; platform?: string }) {
+  const q = new URLSearchParams()
+  q.set('limit', String(params?.limit ?? 100))
+  q.set('order', 'desc')
+  if (params?.platform) q.set('platform', params.platform)
+  return zernioFetch<ZernioAnalyticsResponse>(`/v1/analytics?${q.toString()}`)
+}
+
 // Register (or update) the webhook Zernio calls on inbound events.
 export function configureZernioWebhook(url: string, secret: string) {
   return zernioFetch<{ id: string }>('/v1/webhooks/settings', {

@@ -304,6 +304,15 @@ export const syncAnalytics = inngest.createFunction(
     retries: 3,
   },
   async ({ step }) => {
+    // Zernio is the active analytics provider (IG/FB are connected through it).
+    // The route no-ops when Zernio is disabled, so it's always safe to call.
+    await step.run('sync-zernio-insights', async () => {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/zernio/insights`, { method: 'POST', headers: { 'x-internal-secret': process.env.INTERNAL_API_SECRET ?? '' } })
+      if (!res.ok) throw new Error(`Zernio insights sync failed: ${res.status} ${await res.text().catch(() => '')}`)
+    })
+
+    // Legacy direct-Meta insights pull — kept as a fallback. No-ops (returns a
+    // skipped note, still 200) when Instagram isn't connected via Meta OAuth.
     await step.run('sync-instagram-insights', async () => {
       const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/instagram/insights`, { method: 'POST', headers: { 'x-internal-secret': process.env.INTERNAL_API_SECRET ?? '' } })
       if (!res.ok) throw new Error(`Instagram insights sync failed: ${res.status} ${await res.text().catch(() => '')}`)
