@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import Image from 'next/image'
 import { MessageCircle, X, Send, Sparkles, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -124,7 +123,9 @@ export function AIChat() {
         aria-label="Open AI assistant"
       >
         {open ? <X className="h-5 w-5" /> : (
-          <Image src="/corvelle-icon.png" alt={persona.assistant_name} width={56} height={56} className="h-full w-full rounded-full object-cover" />
+          <span className="text-2xl leading-none" role="img" aria-label={persona.assistant_name}>
+            {persona.assistant_emoji}
+          </span>
         )}
       </button>
 
@@ -133,8 +134,10 @@ export function AIChat() {
         <div className="fixed bottom-24 right-6 z-50 flex w-[360px] max-w-[calc(100vw-2rem)] flex-col rounded-2xl border bg-background shadow-2xl" style={{ height: 520 }}>
           {/* Header */}
           <div className="flex items-center gap-3 rounded-t-2xl brand-gradient px-4 py-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full overflow-hidden">
-              <Image src="/corvelle-icon.png" alt={persona.assistant_name} width={32} height={32} className="h-full w-full object-cover" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20">
+              <span className="text-lg leading-none" role="img" aria-label={persona.assistant_name}>
+                {persona.assistant_emoji}
+              </span>
             </div>
             <div>
               <p className="text-sm font-semibold text-white">{persona.assistant_name}</p>
