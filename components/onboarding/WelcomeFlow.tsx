@@ -16,6 +16,11 @@ const STEPS = [
     body: 'Tap the sparkle button in the corner any time. Ask it to check your deals, draft replies or find follow-ups. You can name it and give it a personality in Settings.',
   },
   {
+    emoji: '🔗',
+    title: 'Connect your accounts',
+    body: 'Head to Settings to link your Instagram and Facebook — that’s what flows your DMs into Corvelle. It takes about a minute, and you can do it any time.',
+  },
+  {
     emoji: '🚀',
     title: "You're all set",
     body: 'Your inbox, deal pipeline and post scheduler are ready. Have a look around — nothing sends without your say-so.',
