@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { timingSafeEqual } from 'crypto'
 import { createServerClient } from '@/lib/supabase/server'
 import { isOwnerEmail } from '@/lib/auth/isOwner'
+import { multiUserEnabled } from '@/lib/auth/currentUser'
 
 function safeEqual(a: string, b: string): boolean {
   const bufA = Buffer.from(a)
@@ -36,7 +37,9 @@ export async function requireApiAuth(request?: Request): Promise<NextResponse | 
     const supabase = await createServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
-      if (!isOwnerEmail(user.email)) {
+      // Single-tenant pilot: only the owner email is allowed. Multi-user: any
+      // authenticated user passes (per-user RLS + user_id scoping isolate data).
+      if (!multiUserEnabled() && !isOwnerEmail(user.email)) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
       }
       return null

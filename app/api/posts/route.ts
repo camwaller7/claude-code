@@ -2,16 +2,20 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerSupabase } from '@/lib/supabase/server'
 import { inngest } from '@/lib/inngest/client'
 import { requireApiAuth } from '@/lib/auth/requireApiAuth'
+import { scopedUserId } from '@/lib/auth/currentUser'
 
 export async function GET(request: NextRequest) {
   const unauthorized = await requireApiAuth(request)
   if (unauthorized) return unauthorized
 
   const supabase = await createRouteHandlerSupabase()
-  const { data, error } = await supabase
+  const userId = await scopedUserId()
+  let query = supabase
     .from('posts')
     .select('*')
     .order('scheduled_at', { ascending: false })
+  if (userId) query = query.eq('user_id', userId)
+  const { data, error } = await query
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json(data)
@@ -22,6 +26,7 @@ export async function POST(request: NextRequest) {
   if (unauthorized) return unauthorized
 
   const supabase = await createRouteHandlerSupabase()
+  const userId = await scopedUserId()
 
   let body: { caption?: string; hashtags?: string; platforms?: string[]; media_url?: string; scheduled_at?: string }
   try {
@@ -39,7 +44,7 @@ export async function POST(request: NextRequest) {
 
   const { data, error } = await supabase
     .from('posts')
-    .insert({ caption, hashtags: hashtags ?? '', platforms: platforms ?? [], media_url: media_url ?? null, scheduled_at: scheduled_at ?? null, status })
+    .insert({ caption, hashtags: hashtags ?? '', platforms: platforms ?? [], media_url: media_url ?? null, scheduled_at: scheduled_at ?? null, status, ...(userId ? { user_id: userId } : {}) })
     .select()
     .single()
 

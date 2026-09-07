@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { isOwnerEmail } from '@/lib/auth/isOwner'
+import { multiUserEnabled } from '@/lib/auth/currentUser'
 import { auditLog } from '@/lib/audit/log'
 import type { Session } from '@supabase/supabase-js'
 import { CURRENT_TERMS_VERSION } from '@/lib/auth/termsVersion'
@@ -22,7 +23,9 @@ export async function requireAuth(): Promise<Session> {
   // the cookie payload - getSession() alone is not authoritative.
   const { data: userData } = await supabase.auth.getUser()
     if (userData.user) {
-      if (!isOwnerEmail(userData.user.email)) {
+      // Single-tenant pilot gates to the owner email; multi-user allows any
+      // authenticated user. Password + terms gates still apply to everyone.
+      if (!multiUserEnabled() && !isOwnerEmail(userData.user.email)) {
         await supabase.auth.signOut()
         forbidden = true
         void auditLog('forbidden_access_attempt', undefined, userData.user.email)

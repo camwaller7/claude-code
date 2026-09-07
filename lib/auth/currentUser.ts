@@ -21,3 +21,11 @@ export async function getCurrentUserId(): Promise<string | null> {
     return null
   }
 }
+
+// The user id to scope rows by, or null in single-tenant mode. Use to
+// conditionally add `.eq('user_id', id)` to reads and `user_id: id` to writes:
+// null means "don't scope" (pilot behaviour), a value means per-user isolation.
+export async function scopedUserId(): Promise<string | null> {
+  if (!multiUserEnabled()) return null
+  return getCurrentUserId()
+}

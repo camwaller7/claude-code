@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import Link from 'next/link'
 import { createServerClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/auth/requireAuth'
+import { scopedUserId } from '@/lib/auth/currentUser'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { NewClientDialog } from '@/components/clients/NewClientDialog'
@@ -12,10 +13,13 @@ import type { CreatorClient } from '@/types'
 export default async function ClientsPage() {
   await requireAuth()
   const supabase = await createServerClient()
-  const { data: clients } = await supabase
+  const uid = await scopedUserId()
+  let clientsQuery = supabase
     .from('clients')
     .select('*')
     .order('created_at', { ascending: false })
+  if (uid) clientsQuery = clientsQuery.eq('user_id', uid)
+  const { data: clients } = await clientsQuery
 
   return (
     <div>

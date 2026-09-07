@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { createServerClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/auth/requireAuth'
+import { scopedUserId } from '@/lib/auth/currentUser'
 import { Badge } from '@/components/ui/badge'
 import { NewDealDialog } from '@/components/deals/NewDealDialog'
 import { DealCard } from '@/components/deals/DealCard'
@@ -19,7 +20,10 @@ function statusVariant(status: DealStatus): 'default' | 'secondary' | 'destructi
 export default async function DealsPage() {
   await requireAuth()
   const supabase = await createServerClient()
-  const { data: deals } = await supabase.from('deals').select('*').order('created_at', { ascending: false })
+  const uid = await scopedUserId()
+  let dealsQuery = supabase.from('deals').select('*').order('created_at', { ascending: false })
+  if (uid) dealsQuery = dealsQuery.eq('user_id', uid)
+  const { data: deals } = await dealsQuery
 
   const byStatus = (status: DealStatus) => (deals ?? []).filter((d: Deal) => d.status === status)
 

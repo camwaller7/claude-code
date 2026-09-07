@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { createServerClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/auth/requireAuth'
+import { scopedUserId } from '@/lib/auth/currentUser'
 import { ConversationList } from '@/components/inbox/ConversationList'
 import { InboxFilters } from '@/components/inbox/InboxFilters'
 import { RealtimeInbox } from '@/components/inbox/RealtimeInbox'
@@ -17,11 +18,13 @@ export default async function InboxPage({ searchParams }: Props) {
   await requireAuth()
   const supabase = await createServerClient()
 
+  const uid = await scopedUserId()
   let query = supabase
     .from('conversations')
     .select('*')
     .order('last_message_at', { ascending: false })
 
+  if (uid) query = query.eq('user_id', uid)
   if (platform) query = query.eq('platform', platform)
   if (category) query = query.eq('category', category)
   const effectiveStatus = status ?? 'needs_reply'

@@ -7,10 +7,18 @@ import { WelcomeFlow } from '@/components/onboarding/WelcomeFlow'
 import { AudiencePanel } from '@/components/dashboard/AudiencePanel'
 import { getContentAnalytics } from '@/lib/analytics/stats'
 import { getLinkedPlatforms } from '@/lib/platform/linked'
+import { scopedUserId } from '@/lib/auth/currentUser'
 
 export default async function DashboardPage() {
   await requireAuth()
   const supabase = await createServerClient()
+
+  // Multi-user: scope every per-user read to the signed-in user. Null in the
+  // single-tenant pilot, where scope() is a no-op.
+  const uid = await scopedUserId()
+  function scope<T>(q: T): T {
+    return uid ? (q as unknown as { eq: (c: string, v: string) => T }).eq('user_id', uid) : q
+  }
 
   const [
     { data: paidDeals },
@@ -21,13 +29,13 @@ export default async function DashboardPage() {
     { data: allPosts },
     { data: recentMessages },
   ] = await Promise.all([
-    supabase.from('deals').select('deal_value, created_at').eq('status', 'paid'),
-    supabase.from('deals').select('deal_value, status').in('status', ['inquiry', 'negotiating', 'contracted', 'delivered']),
-    supabase.from('deals').select('status, deal_value, created_at'),
-    supabase.from('conversations').select('platform, category, status, last_message_at, created_at'),
-    supabase.from('clients').select('status, created_at'),
-    supabase.from('posts').select('status, created_at, scheduled_at'),
-    supabase.from('messages').select('created_at, direction, conversation:conversations(platform)').order('created_at', { ascending: false }).limit(200),
+    scope(supabase.from('deals').select('deal_value, created_at').eq('status', 'paid')),
+    scope(supabase.from('deals').select('deal_value, status').in('status', ['inquiry', 'negotiating', 'contracted', 'delivered'])),
+    scope(supabase.from('deals').select('status, deal_value, created_at')),
+    scope(supabase.from('conversations').select('platform, category, status, last_message_at, created_at')),
+    scope(supabase.from('clients').select('status, created_at')),
+    scope(supabase.from('posts').select('status, created_at, scheduled_at')),
+    scope(supabase.from('messages').select('created_at, direction, conversation:conversations(platform)').order('created_at', { ascending: false }).limit(200)),
   ])
 
   const [analytics, linkedPlatforms] = await Promise.all([

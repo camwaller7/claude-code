@@ -55,9 +55,14 @@ begin
     execute format('drop policy if exists %I on %I', t || ' owner only', t);
     execute format('drop policy if exists %I on %I', t || ' auth access', t);
     execute format('drop policy if exists %I on %I', t || ' per user', t);
-    -- Each user sees and writes only their own rows.
+    -- Each user sees and writes only their own rows. is_app_owner() is kept so
+    -- the single-tenant pilot keeps working after this migration even before
+    -- the app stamps user_id (owner rows carry the owner's user_id from the
+    -- backfill; the owner clause covers new owner writes that omit user_id).
+    -- The app layer additionally filters reads by user_id in multi-user mode so
+    -- the owner doesn't see other users' rows during normal use.
     execute format(
-      'create policy %I on %I for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid())',
+      'create policy %I on %I for all to authenticated using (user_id = auth.uid() or is_app_owner()) with check (user_id = auth.uid() or is_app_owner())',
       t || ' per user', t
     );
   end loop;
@@ -83,7 +88,7 @@ create index if not exists zernio_accounts_account_idx on zernio_accounts(zernio
 alter table zernio_accounts enable row level security;
 drop policy if exists "zernio_accounts per user" on zernio_accounts;
 create policy "zernio_accounts per user" on zernio_accounts
-  for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
+  for all to authenticated using (user_id = auth.uid() or is_app_owner()) with check (user_id = auth.uid() or is_app_owner());
 
 -- 5. Per-user subscription/plan state for billing (Stripe). Populated by the
 --    Stripe webhook in a later step; free/no-row means no active paid plan.

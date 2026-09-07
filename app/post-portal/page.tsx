@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { createServerClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/auth/requireAuth'
+import { scopedUserId } from '@/lib/auth/currentUser'
 import { Badge } from '@/components/ui/badge'
 import { NewPostDialog } from '@/components/post-portal/NewPostDialog'
 import { PublishNowButton } from '@/components/post-portal/PublishNowButton'
@@ -18,7 +19,10 @@ function statusVariant(status: PostStatus): 'default' | 'secondary' | 'destructi
 export default async function PostPortalPage() {
   await requireAuth()
   const supabase = await createServerClient()
-  const { data: posts } = await supabase.from('posts').select('*').order('scheduled_at', { ascending: false })
+  const uid = await scopedUserId()
+  let postsQuery = supabase.from('posts').select('*').order('scheduled_at', { ascending: false })
+  if (uid) postsQuery = postsQuery.eq('user_id', uid)
+  const { data: posts } = await postsQuery
 
   return (
     <div>

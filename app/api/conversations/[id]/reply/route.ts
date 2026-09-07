@@ -308,6 +308,8 @@ export async function POST(
       sent_at: new Date().toISOString(),
       send_status: sendResult.status,
       send_error: sendResult.error ?? null,
+      // Inherit the conversation's owner so the reply shows under per-user reads.
+      ...(conv.user_id ? { user_id: conv.user_id } : {}),
     })
     .select()
     .single()
