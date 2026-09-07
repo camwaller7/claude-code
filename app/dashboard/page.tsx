@@ -38,9 +38,11 @@ export default async function DashboardPage() {
     scope(supabase.from('messages').select('created_at, direction, conversation:conversations(platform)').order('created_at', { ascending: false }).limit(200)),
   ])
 
+  // Content analytics aren't per-user scoped yet, so don't show global data to
+  // multi-user creators (per-user analytics sync is a later step).
   const [analytics, linkedPlatforms] = await Promise.all([
-    getContentAnalytics().catch(() => null),
-    getLinkedPlatforms().catch(() => []),
+    uid ? Promise.resolve(null) : getContentAnalytics().catch(() => null),
+    getLinkedPlatforms(uid).catch(() => []),
   ])
 
   // Flatten the embedded conversation platform onto each message row.

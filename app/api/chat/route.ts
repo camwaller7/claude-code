@@ -8,6 +8,7 @@ import { auditLog } from '@/lib/audit/log'
 import { getLLMSettings, logTokenUsage } from '@/lib/llm/settings'
 import { llmComplete } from '@/lib/llm/client'
 import { checkAIBudget } from '@/lib/llm/budget'
+import { scopedUserId } from '@/lib/auth/currentUser'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -158,7 +159,7 @@ const tools: Anthropic.Tool[] = [
   },
 ]
 
-async function runTool(name: string, input: Record<string, unknown>): Promise<string> {
+async function runTool(name: string, input: Record<string, unknown>, userId?: string | null): Promise<string> {
   try {
     switch (name) {
       case 'list_conversations': {
@@ -167,6 +168,7 @@ async function runTool(name: string, input: Record<string, unknown>): Promise<st
           .select('id, contact_name, contact_handle, category, status, priority, platform, last_message_at')
           .order('last_message_at', { ascending: false })
           .limit((input.limit as number) ?? 25)
+        if (userId) q = q.eq('user_id', userId)
         if (input.category) q = q.eq('category', input.category as string)
         if (input.status) q = q.eq('status', input.status as string)
         if (input.platform) q = q.eq('platform', input.platform as string)
@@ -175,15 +177,16 @@ async function runTool(name: string, input: Record<string, unknown>): Promise<st
         return JSON.stringify(data ?? [])
       }
       case 'read_conversation': {
-        const [{ data: conv }, { data: msgs, error }] = await Promise.all([
-          adminSupabase.from('conversations').select('*').eq('id', input.conversation_id as string).single(),
-          adminSupabase
-            .from('messages')
-            .select('direction, body, ai_category, ai_draft_reply, sent_at')
-            .eq('conversation_id', input.conversation_id as string)
-            .order('sent_at', { ascending: true })
-            .limit(100),
-        ])
+        let convQ = adminSupabase.from('conversations').select('*').eq('id', input.conversation_id as string)
+        if (userId) convQ = convQ.eq('user_id', userId)
+        let msgQ = adminSupabase
+          .from('messages')
+          .select('direction, body, ai_category, ai_draft_reply, sent_at')
+          .eq('conversation_id', input.conversation_id as string)
+          .order('sent_at', { ascending: true })
+          .limit(100)
+        if (userId) msgQ = msgQ.eq('user_id', userId)
+        const [{ data: conv }, { data: msgs, error }] = await Promise.all([convQ.maybeSingle(), msgQ])
         if (error) return `Error: ${error.message}`
         if (!conv) return 'Conversation not found — use list_conversations to get valid IDs.'
         return JSON.stringify({ conversation: conv, messages: msgs ?? [] })
@@ -191,29 +194,32 @@ async function runTool(name: string, input: Record<string, unknown>): Promise<st
       case 'search_messages': {
         const term = String(input.query ?? '').replace(/[%_]/g, '')
         if (!term) return 'Empty search query.'
-        const { data, error } = await adminSupabase
+        let q = adminSupabase
           .from('messages')
           .select('body, direction, sent_at, conversation_id, conversations(contact_name, contact_handle, platform, category)')
           .ilike('body', `%${term}%`)
           .order('sent_at', { ascending: false })
           .limit(20)
+        if (userId) q = q.eq('user_id', userId)
+        const { data, error } = await q
         if (error) return `Error: ${error.message}`
         return JSON.stringify(data ?? [])
       }
       case 'get_deals': {
         let q = adminSupabase.from('deals').select('*').order('created_at', { ascending: false })
+        if (userId) q = q.eq('user_id', userId)
         if (input.status) q = q.eq('status', input.status as string)
         const { data, error } = await q
         if (error) return `Error: ${error.message}`
         return JSON.stringify(data ?? [])
       }
       case 'update_deal_status': {
-        const { data, error } = await adminSupabase
+        let upd = adminSupabase
           .from('deals')
           .update({ status: input.status })
           .eq('id', input.deal_id as string)
-          .select()
-          .single()
+        if (userId) upd = upd.eq('user_id', userId)
+        const { data, error } = await upd.select().single()
         if (error) return `Error: ${error.message}`
         await auditLog('deal_status_changed', { deal_id: input.deal_id, new_status: input.status, via: 'ai_chat' })
         return `Updated deal "${data.brand_name}" to status "${data.status}"`
@@ -228,6 +234,7 @@ async function runTool(name: string, input: Record<string, unknown>): Promise<st
             status: input.status,
             notes: input.notes ?? null,
             currency: 'USD',
+            ...(userId ? { user_id: userId } : {}),
           })
           .select()
           .single()
@@ -249,6 +256,7 @@ async function runTool(name: string, input: Record<string, unknown>): Promise<st
       }
       case 'get_clients': {
         let q = adminSupabase.from('clients').select('*').order('created_at', { ascending: false })
+        if (userId) q = q.eq('user_id', userId)
         if (input.status) q = q.eq('status', input.status as string)
         const { data, error } = await q
         if (error) return `Error: ${error.message}`
@@ -256,26 +264,32 @@ async function runTool(name: string, input: Record<string, unknown>): Promise<st
       }
       case 'get_posts': {
         let q = adminSupabase.from('posts').select('*').order('created_at', { ascending: false })
+        if (userId) q = q.eq('user_id', userId)
         if (input.status) q = q.eq('status', input.status as string)
         const { data, error } = await q
         if (error) return `Error: ${error.message}`
         return JSON.stringify(data ?? [])
       }
       case 'get_reminders': {
+        // getReminders() is not yet per-user scoped; don't expose global data
+        // in multi-user mode (see the per-user analytics/reminders sync step).
+        if (userId) return JSON.stringify({ note: 'Reminders are being set up for your account and are not available yet.' })
         const reminders = await getReminders()
         return JSON.stringify(reminders)
       }
       case 'get_content_analytics': {
+        if (userId) return JSON.stringify({ note: 'Analytics are being set up for your account and are not available yet.' })
         const analytics = await getContentAnalytics()
         return JSON.stringify(analytics)
       }
       case 'get_business_stats': {
+        const scoped = <T,>(q: T): T => (userId ? (q as unknown as { eq: (c: string, v: string) => T }).eq('user_id', userId) : q)
         const [{ data: deals }, { count: convTotal }, { count: needsReply }, { data: clients }, { data: posts }] = await Promise.all([
-          adminSupabase.from('deals').select('status, deal_value'),
-          adminSupabase.from('conversations').select('*', { count: 'exact', head: true }),
-          adminSupabase.from('conversations').select('*', { count: 'exact', head: true }).eq('status', 'needs_reply'),
-          adminSupabase.from('clients').select('status'),
-          adminSupabase.from('posts').select('status'),
+          scoped(adminSupabase.from('deals').select('status, deal_value')),
+          scoped(adminSupabase.from('conversations').select('*', { count: 'exact', head: true })),
+          scoped(adminSupabase.from('conversations').select('*', { count: 'exact', head: true }).eq('status', 'needs_reply')),
+          scoped(adminSupabase.from('clients').select('status')),
+          scoped(adminSupabase.from('posts').select('status')),
         ])
         const d = deals ?? []
         const revenue = d.filter(x => x.status === 'paid').reduce((s, x) => s + (x.deal_value ?? 0), 0)
@@ -363,6 +377,9 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  // The user whose data the assistant may read/write. Null in single-tenant.
+  const chatUserId = await scopedUserId()
+
   // Monthly AI spend cap — refuse before spending when the budget is reached.
   const budget = await checkAIBudget()
   if (budget.over) {
@@ -418,7 +435,7 @@ export async function POST(request: NextRequest) {
               toolUses.map(async tu => ({
                 type: 'tool_result' as const,
                 tool_use_id: tu.id,
-                content: await runTool(tu.name, tu.input as Record<string, unknown>),
+                content: await runTool(tu.name, tu.input as Record<string, unknown>, chatUserId),
               }))
             )
             currentMessages = [
@@ -437,9 +454,9 @@ export async function POST(request: NextRequest) {
         // Other providers don't run our tool loop — give them a live data
         // snapshot as context instead, so answers still use real data.
         const [stats, analytics, convs] = await Promise.all([
-          runTool('get_business_stats', {}),
-          runTool('get_content_analytics', {}),
-          runTool('list_conversations', { limit: 15 }),
+          runTool('get_business_stats', {}, chatUserId),
+          runTool('get_content_analytics', {}, chatUserId),
+          runTool('list_conversations', { limit: 15 }, chatUserId),
         ])
         const contextBlock = `LIVE DATA SNAPSHOT (use this to answer):\nBUSINESS STATS: ${stats}\nCONTENT ANALYTICS: ${analytics}\nRECENT CONVERSATIONS: ${convs}`
 

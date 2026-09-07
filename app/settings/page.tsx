@@ -8,6 +8,8 @@ import { LookSettings } from '@/components/settings/LookSettings'
 import { TokenUsagePanel } from '@/components/settings/TokenUsagePanel'
 import { AuditLogPanel } from '@/components/settings/AuditLogPanel'
 import { AccountPanel } from '@/components/settings/AccountPanel'
+import { ConnectAccounts } from '@/components/settings/ConnectAccounts'
+import { multiUserEnabled, scopedUserId } from '@/lib/auth/currentUser'
 
 export default async function SettingsPage() {
   await requireAuth()
@@ -18,6 +20,12 @@ export default async function SettingsPage() {
     .eq('id', 1)
     .single()
 
+  // In multi-user mode, show each creator their own connected social accounts.
+  const uid = await scopedUserId()
+  const { data: connectedAccounts } = uid
+    ? await adminSupabase.from('zernio_accounts').select('platform, username').eq('user_id', uid)
+    : { data: null }
+
   return (
     <div className="max-w-3xl mx-auto flex flex-col gap-8">
       <div>
@@ -27,6 +35,7 @@ export default async function SettingsPage() {
         </p>
       </div>
       <AccountPanel />
+      {multiUserEnabled() && <ConnectAccounts connected={connectedAccounts ?? []} />}
       <LookSettings initialTheme={settings?.brand_theme ?? 'studio'} />
       <AssistantSettings
         initialName={settings?.assistant_name ?? 'Elle'}

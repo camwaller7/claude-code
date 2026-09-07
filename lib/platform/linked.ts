@@ -11,12 +11,24 @@ function normalize(p: string): Platform | null {
   return (KNOWN_PLATFORMS as string[]).includes(v) ? (v as Platform) : null
 }
 
-// The set of platforms considered "linked" for filtering. Instagram/Facebook
-// (and any other Zernio-managed inbox) come from the live Zernio account list;
-// other platforms (Gmail, X, Telegram, …) come from the app's own
-// platform_connections table. The union is returned in a stable display order.
-export async function getLinkedPlatforms(): Promise<Platform[]> {
+// The set of platforms considered "linked" for filtering. In multi-user mode
+// (userId provided) this is the user's own connected accounts from
+// zernio_accounts. In the single-tenant pilot it's the live Zernio workspace
+// accounts plus the app's platform_connections. Returned in display order.
+export async function getLinkedPlatforms(userId?: string | null): Promise<Platform[]> {
   const linked = new Set<Platform>()
+
+  if (userId) {
+    const { data } = await adminSupabase
+      .from('zernio_accounts')
+      .select('platform')
+      .eq('user_id', userId)
+    for (const a of data ?? []) {
+      const p = normalize(a.platform as string)
+      if (p) linked.add(p)
+    }
+    return KNOWN_PLATFORMS.filter((p) => linked.has(p))
+  }
 
   if (zernioEnabled()) {
     const res = await listZernioAccounts().catch(() => null)
