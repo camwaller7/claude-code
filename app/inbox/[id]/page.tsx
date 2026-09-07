@@ -38,7 +38,9 @@ export default async function ConversationPage({ params }: Props) {
   const conv = conversation as Conversation
 
   return (
-    <div className="flex flex-col gap-4 max-w-3xl mx-auto">
+    <div className="flex flex-col gap-4">
+      {/* Back button, pinned to the top-left of the page (outside the centered
+          conversation column) so it's always the first thing on the screen. */}
       <Link
         href="/inbox"
         className="inline-flex w-fit items-center gap-1.5 rounded-lg border bg-background px-3 py-1.5 text-sm font-medium text-foreground hover:bg-accent transition-colors"
@@ -46,21 +48,23 @@ export default async function ConversationPage({ params }: Props) {
         <ArrowLeft className="h-4 w-4" />
         Back to inbox
       </Link>
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h1 className="text-xl font-bold truncate">{conv.contact_name}</h1>
-          <p className="text-sm text-muted-foreground truncate">
-            {conv.contact_handle} · {conv.platform}
-          </p>
-          <div className="mt-1 flex gap-2">
-            <Badge variant="outline">{conv.category.replace('_', ' ')}</Badge>
-            {conv.priority > 5 && <Badge variant="destructive">High priority</Badge>}
+      <div className="flex flex-col gap-4 max-w-3xl mx-auto w-full">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold truncate">{conv.contact_name}</h1>
+            <p className="text-sm text-muted-foreground truncate">
+              {conv.contact_handle} · {conv.platform}
+            </p>
+            <div className="mt-1 flex gap-2">
+              <Badge variant="outline">{conv.category.replace('_', ' ')}</Badge>
+              {conv.priority > 5 && <Badge variant="destructive">High priority</Badge>}
+            </div>
           </div>
+          <ConversationActions conversation={conv} />
         </div>
-        <ConversationActions conversation={conv} />
+        <MessageThread messages={msgList} conversation={conv} />
+        <ReplyBox conversationId={id} suggestedReply={lastInbound?.ai_draft_reply ?? undefined} />
       </div>
-      <MessageThread messages={msgList} conversation={conv} />
-      <ReplyBox conversationId={id} suggestedReply={lastInbound?.ai_draft_reply ?? undefined} />
     </div>
   )
 }
