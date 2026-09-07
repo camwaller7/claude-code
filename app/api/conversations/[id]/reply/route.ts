@@ -8,7 +8,7 @@ import { META_GRAPH_VERSION } from '@/lib/platform/metaVersion'
 import { metaDebug } from '@/lib/log/debug'
 import { appsecretProof } from '@/lib/platform/appsecretProof'
 import { zernioEnabled, sendZernioMessage, resolveZernioAccountId } from '@/lib/platform/zernio'
-import { multiUserEnabled } from '@/lib/auth/currentUser'
+import { multiUserEnabled, scopedUserId } from '@/lib/auth/currentUser'
 
 const META_MESSAGING_WINDOW_MS = 24 * 60 * 60 * 1000
 
@@ -279,13 +279,23 @@ export async function POST(
   if (unauthorized) return unauthorized
 
   const { id } = await params
-  const { body } = await request.json() as { body: string }
+  let body: string
+  try {
+    const parsed = await request.json() as { body?: unknown }
+    body = typeof parsed.body === 'string' ? parsed.body : ''
+  } catch {
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+  }
+  if (!body.trim()) {
+    return NextResponse.json({ error: 'Reply text is required' }, { status: 400 })
+  }
 
-  const { data: conv, error: convError } = await adminSupabase
-    .from('conversations')
-    .select('*')
-    .eq('id', id)
-    .single()
+  // Scope to the owner in multi-user mode: a user must not be able to reply to
+  // (and thereby send from) another tenant's conversation. No-op in the pilot.
+  const userId = await scopedUserId()
+  let convQ = adminSupabase.from('conversations').select('*').eq('id', id)
+  if (userId) convQ = convQ.eq('user_id', userId)
+  const { data: conv, error: convError } = await convQ.maybeSingle()
 
   if (convError || !conv) {
     return NextResponse.json({ error: 'Conversation not found' }, { status: 404 })

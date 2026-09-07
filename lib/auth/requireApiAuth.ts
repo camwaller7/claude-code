@@ -3,6 +3,12 @@ import { timingSafeEqual } from 'crypto'
 import { createServerClient } from '@/lib/supabase/server'
 import { isOwnerEmail } from '@/lib/auth/isOwner'
 import { multiUserEnabled } from '@/lib/auth/currentUser'
+import { billingEnabled } from '@/lib/stripe/client'
+import { hasActivePlan } from '@/lib/billing/subscription'
+
+// Paths reachable without an active subscription, so a user can actually
+// subscribe / manage billing / connect accounts while on the free gate.
+const PLAN_EXEMPT_PREFIXES = ['/api/billing/', '/api/zernio/connect', '/api/media']
 
 function safeEqual(a: string, b: string): boolean {
   const bufA = Buffer.from(a)
@@ -41,6 +47,17 @@ export async function requireApiAuth(request?: Request): Promise<NextResponse | 
       // authenticated user passes (per-user RLS + user_id scoping isolate data).
       if (!multiUserEnabled() && !isOwnerEmail(user.email)) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
+      // Multi-user paywall: non-owner users need an active subscription to reach
+      // data/AI endpoints. Enforced here (not just on page navigation) so the
+      // API itself can't be called directly without a plan. Billing/connect
+      // paths stay reachable so a user can subscribe.
+      if (multiUserEnabled() && billingEnabled() && !isOwnerEmail(user.email)) {
+        const path = request ? new URL(request.url).pathname : ''
+        const exempt = PLAN_EXEMPT_PREFIXES.some(p => path.startsWith(p))
+        if (!exempt && !(await hasActivePlan(user.id))) {
+          return NextResponse.json({ error: 'Subscription required' }, { status: 402 })
+        }
       }
       return null
     }

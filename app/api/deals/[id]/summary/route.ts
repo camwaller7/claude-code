@@ -103,10 +103,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }
   }
 
-  await adminSupabase
+  let saveQ = adminSupabase
     .from('deals')
     .update({ ai_summary: text, ai_summary_at: new Date().toISOString() })
     .eq('id', id)
+  if (userId) saveQ = saveQ.eq('user_id', userId)
+  await saveQ
 
   return NextResponse.json({ summary: text })
 }

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminSupabase } from '@/lib/supabase/admin'
 import { requireApiAuth } from '@/lib/auth/requireApiAuth'
+import { scopedUserId } from '@/lib/auth/currentUser'
 import type { MessageCategory, MessageStatus } from '@/types'
 
-const CATEGORIES: MessageCategory[] = ['brand_deal', 'client', 'fan', 'spam', 'uncategorized']
+const CATEGORIES: MessageCategory[] = ['brand_deal', 'client', 'fan', 'personal', 'spam', 'uncategorized']
 const STATUSES: MessageStatus[] = ['needs_reply', 'replied', 'archived']
 
 // Update a conversation's category (manual categorisation from the inbox list)
@@ -35,14 +36,15 @@ export async function PATCH(
     return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
   }
 
-  const { data, error } = await adminSupabase
-    .from('conversations')
-    .update(update)
-    .eq('id', id)
-    .select()
-    .single()
+  // Scope to the owner in multi-user mode so a user can't mutate another
+  // tenant's conversation (the admin client bypasses RLS). No-op in the pilot.
+  const userId = await scopedUserId()
+  let q = adminSupabase.from('conversations').update(update).eq('id', id)
+  if (userId) q = q.eq('user_id', userId)
+  const { data, error } = await q.select().maybeSingle()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Could not update conversation' }, { status: 500 })
+  if (!data) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   return NextResponse.json(data)
 }
 
@@ -58,8 +60,11 @@ export async function DELETE(
   if (unauthorized) return unauthorized
 
   const { id } = await params
-  const { error } = await adminSupabase.from('conversations').delete().eq('id', id)
+  const userId = await scopedUserId()
+  let q = adminSupabase.from('conversations').delete().eq('id', id)
+  if (userId) q = q.eq('user_id', userId)
+  const { error } = await q
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Could not delete conversation' }, { status: 500 })
   return NextResponse.json({ ok: true })
 }

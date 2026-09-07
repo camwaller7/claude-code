@@ -1,20 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminSupabase } from '@/lib/supabase/admin'
 import { requireApiAuth } from '@/lib/auth/requireApiAuth'
+import { scopedUserId } from '@/lib/auth/currentUser'
 
 export async function GET(request: NextRequest) {
   const unauthorized = await requireApiAuth(request)
   if (unauthorized) return unauthorized
 
+  const userId = await scopedUserId()
   const now = new Date()
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
 
-  const { data: all } = await adminSupabase
+  let usageQ = adminSupabase
     .from('token_usage')
     .select('provider, model, feature, input_tokens, output_tokens, created_at')
     .order('created_at', { ascending: false })
     .limit(500)
+  if (userId) usageQ = usageQ.eq('user_id', userId)
+  const { data: all } = await usageQ
 
   const rows = all ?? []
 
