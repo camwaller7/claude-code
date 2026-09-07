@@ -5,7 +5,9 @@ import {
   zernioEnabled,
   getZernioAnalytics,
   type ZernioAnalyticsPost,
+  type ZernioAnalyticsResponse,
 } from '@/lib/platform/zernio'
+import { multiUserEnabled } from '@/lib/auth/currentUser'
 
 // ─── Zernio analytics sync ────────────────────────────────────────────────────
 // Pulls follower counts and per-post performance from Zernio's unified analytics
@@ -32,32 +34,27 @@ function mediaTypeOf(post: ZernioAnalyticsPost): string {
   return 'image'
 }
 
-async function syncZernioInsights() {
-  const res = await getZernioAnalytics({ limit: 100 })
-  if (!res.ok || !res.data) {
-    return { skipped: true as const, reason: res.error ?? 'zernio_analytics_failed' }
-  }
-
+// Write one analytics response into follower_snapshots + content_metrics,
+// stamping user_id when syncing for a specific user (multi-user mode).
+async function writeAnalytics(data: ZernioAnalyticsResponse, userId?: string | null) {
   const today = new Date().toISOString().slice(0, 10)
-  const { posts = [], accounts = [], hasAnalyticsAccess } = res.data
-
-  // ── 1. Follower snapshots (one row per platform per day) ──
+  const { posts = [], accounts = [] } = data
+  const owner = userId ? { user_id: userId } : {}
   let followerSnapshots = 0
+  let metricsSynced = 0
+
   for (const a of accounts) {
     if (typeof a.followersCount !== 'number') continue
     const platform = normalizePlatform(a.platform)
     if (!platform) continue
     const { error } = await adminSupabase.from('follower_snapshots').upsert(
-      { platform, followers: a.followersCount, snapshot_date: today },
+      { platform, followers: a.followersCount, snapshot_date: today, ...owner },
       { onConflict: 'platform,snapshot_date' }
     )
     if (!error) followerSnapshots++
   }
 
-  // ── 2. Per-post metrics ──
-  let metricsSynced = 0
   for (const post of posts) {
-    // Only published posts have real analytics and a platform post id.
     if (post.status && post.status !== 'published') continue
     const externalId = post._id
     if (!externalId || !post.publishedAt) continue
@@ -65,9 +62,7 @@ async function syncZernioInsights() {
     if (!platform) continue
 
     const a = post.analytics ?? {}
-    // Views basis: prefer explicit views, then impressions, then reach.
     const views = a.views ?? a.impressions ?? a.reach ?? 0
-
     const { error } = await adminSupabase.from('content_metrics').upsert(
       {
         platform,
@@ -81,13 +76,44 @@ async function syncZernioInsights() {
         saves: a.saves ?? 0,
         follows_gained: a.follows ?? 0,
         posted_at: post.publishedAt,
+        ...owner,
       },
       { onConflict: 'platform,external_post_id' }
     )
     if (!error) metricsSynced++
   }
 
-  return { followerSnapshots, metricsSynced, hasAnalyticsAccess, posts: posts.length }
+  return { followerSnapshots, metricsSynced }
+}
+
+// Single-tenant pilot: one global pull.
+async function syncSingleTenant() {
+  const res = await getZernioAnalytics({ limit: 100 })
+  if (!res.ok || !res.data) {
+    return { skipped: true as const, reason: res.error ?? 'zernio_analytics_failed' }
+  }
+  const written = await writeAnalytics(res.data)
+  return { ...written, hasAnalyticsAccess: res.data.hasAnalyticsAccess }
+}
+
+// Multi-user: one pull per connected account, scoped and attributed to its
+// owning user, so each creator's dashboard reflects only their own accounts.
+async function syncMultiUser() {
+  const { data: accounts } = await adminSupabase
+    .from('zernio_accounts')
+    .select('user_id, zernio_account_id')
+  let followerSnapshots = 0
+  let metricsSynced = 0
+  let accountsSynced = 0
+  for (const acct of accounts ?? []) {
+    const res = await getZernioAnalytics({ limit: 100, accountId: acct.zernio_account_id as string })
+    if (!res.ok || !res.data) continue
+    const written = await writeAnalytics(res.data, acct.user_id as string)
+    followerSnapshots += written.followerSnapshots
+    metricsSynced += written.metricsSynced
+    accountsSynced++
+  }
+  return { followerSnapshots, metricsSynced, accountsSynced }
 }
 
 export async function POST(request: Request) {
@@ -98,7 +124,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ skipped: true, reason: 'zernio_disabled' })
   }
   try {
-    return NextResponse.json(await syncZernioInsights())
+    const result = multiUserEnabled() ? await syncMultiUser() : await syncSingleTenant()
+    return NextResponse.json(result)
   } catch (err) {
     console.error('[zernio/insights] sync error:', err)
     return NextResponse.json({ skipped: true, reason: err instanceof Error ? err.message : String(err) })

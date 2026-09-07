@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireApiAuth } from '@/lib/auth/requireApiAuth'
+import { scopedUserId } from '@/lib/auth/currentUser'
 import { getContentAnalytics } from '@/lib/analytics/stats'
 
 export async function GET(request: NextRequest) {
@@ -7,7 +8,7 @@ export async function GET(request: NextRequest) {
   if (unauthorized) return unauthorized
 
   try {
-    const analytics = await getContentAnalytics()
+    const analytics = await getContentAnalytics(await scopedUserId())
     return NextResponse.json(analytics)
   } catch (e) {
     console.error('[analytics]', e)

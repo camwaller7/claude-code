@@ -274,15 +274,11 @@ async function runTool(name: string, input: Record<string, unknown>, userId?: st
         return JSON.stringify(data ?? [])
       }
       case 'get_reminders': {
-        // getReminders() is not yet per-user scoped; don't expose global data
-        // in multi-user mode (see the per-user analytics/reminders sync step).
-        if (userId) return JSON.stringify({ note: 'Reminders are being set up for your account and are not available yet.' })
-        const reminders = await getReminders()
+        const reminders = await getReminders(userId)
         return JSON.stringify(reminders)
       }
       case 'get_content_analytics': {
-        if (userId) return JSON.stringify({ note: 'Analytics are being set up for your account and are not available yet.' })
-        const analytics = await getContentAnalytics()
+        const analytics = await getContentAnalytics(userId)
         return JSON.stringify(analytics)
       }
       case 'get_business_stats': {

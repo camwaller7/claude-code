@@ -137,22 +137,26 @@ function bestHours(posts: PostPerformance[]) {
     .slice(0, 3)
 }
 
-export async function getContentAnalytics(): Promise<ContentAnalytics> {
+export async function getContentAnalytics(userId?: string | null): Promise<ContentAnalytics> {
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86400_000).toISOString().slice(0, 10)
   const sevenDaysAgoTs = new Date(Date.now() - 7 * 86400_000).toISOString()
 
-  const [{ data: snaps }, { data: metrics }] = await Promise.all([
-    adminSupabase
-      .from('follower_snapshots')
-      .select('platform, followers, snapshot_date')
-      .gte('snapshot_date', thirtyDaysAgo)
-      .order('snapshot_date', { ascending: true }),
-    adminSupabase
-      .from('content_metrics')
-      .select('*')
-      .order('posted_at', { ascending: false })
-      .limit(200),
-  ])
+  // Scope to one user's rows in multi-user mode; unscoped in the pilot.
+  let snapsQuery = adminSupabase
+    .from('follower_snapshots')
+    .select('platform, followers, snapshot_date')
+    .gte('snapshot_date', thirtyDaysAgo)
+    .order('snapshot_date', { ascending: true })
+  let metricsQuery = adminSupabase
+    .from('content_metrics')
+    .select('*')
+    .order('posted_at', { ascending: false })
+    .limit(200)
+  if (userId) {
+    snapsQuery = snapsQuery.eq('user_id', userId)
+    metricsQuery = metricsQuery.eq('user_id', userId)
+  }
+  const [{ data: snaps }, { data: metrics }] = await Promise.all([snapsQuery, metricsQuery])
 
   // ---- follower trend (all platforms combined) ----
   const byDate = new Map<string, Record<string, number>>()

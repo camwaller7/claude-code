@@ -183,11 +183,14 @@ export interface ZernioAnalyticsResponse {
 }
 
 // Fetch published-post analytics and connected-account follower counts.
-export function getZernioAnalytics(params?: { limit?: number; platform?: string }) {
+// Pass accountId to scope to a single connected account (used by the per-user
+// sync so each creator only gets their own account's metrics).
+export function getZernioAnalytics(params?: { limit?: number; platform?: string; accountId?: string }) {
   const q = new URLSearchParams()
   q.set('limit', String(params?.limit ?? 100))
   q.set('order', 'desc')
   if (params?.platform) q.set('platform', params.platform)
+  if (params?.accountId) q.set('accountId', params.accountId)
   return zernioFetch<ZernioAnalyticsResponse>(`/v1/analytics?${q.toString()}`)
 }
 

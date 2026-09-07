@@ -27,16 +27,19 @@ function parseDatesFromText(text: string | null): Date[] {
   return found
 }
 
-export async function getReminders(): Promise<Reminder[]> {
+export async function getReminders(userId?: string | null): Promise<Reminder[]> {
   const now = new Date()
   const reminders: Reminder[] = []
 
+  // Scope every source to one user in multi-user mode; unscoped in the pilot.
+  const scope = <T,>(q: T): T => (userId ? (q as unknown as { eq: (c: string, v: string) => T }).eq('user_id', userId) : q)
+
   const [{ data: deals }, { data: clients }, { data: posts }, analytics, { data: needsReplyConvs }] = await Promise.all([
-    adminSupabase.from('deals').select('id, brand_name, status, payment_due_date, agreed_date, notes').not('status', 'in', '(paid,lost)'),
-    adminSupabase.from('clients').select('id, name, important_dates, status').eq('status', 'active'),
-    adminSupabase.from('posts').select('id, status, scheduled_at, published_at').order('scheduled_at', { ascending: false }).limit(50),
-    getContentAnalytics().catch(() => null),
-    adminSupabase.from('conversations').select('id, contact_name, category, priority').eq('status', 'needs_reply'),
+    scope(adminSupabase.from('deals').select('id, brand_name, status, payment_due_date, agreed_date, notes').not('status', 'in', '(paid,lost)')),
+    scope(adminSupabase.from('clients').select('id, name, important_dates, status').eq('status', 'active')),
+    scope(adminSupabase.from('posts').select('id, status, scheduled_at, published_at').order('scheduled_at', { ascending: false }).limit(50)),
+    getContentAnalytics(userId).catch(() => null),
+    scope(adminSupabase.from('conversations').select('id, contact_name, category, priority').eq('status', 'needs_reply')),
   ])
 
   // ---- Deal due dates ----
