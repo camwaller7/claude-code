@@ -42,27 +42,49 @@ async function resolveOwningUserId(accountId?: string): Promise<string | null> {
   return (data?.user_id as string | undefined) ?? null
 }
 
-// Zernio signs webhook bodies with HMAC-SHA256 of the raw body keyed by the
-// configured secret. The header name isn't pinned by the SDK types, so we check
-// the common candidates. If the secret is set and a recognized signature header
-// is present, we require it to match; if no known header is present we accept
-// but log, to avoid dropping real events on a header-name mismatch (harden once
-// the exact header is confirmed against Zernio's docs).
+// Verify the Zernio webhook signature (audit C5 — now fails CLOSED).
+// Zernio signs the raw body with HMAC-SHA256 keyed by ZERNIO_WEBHOOK_SECRET, but
+// its SDK doesn't pin the HTTP header NAME. Rather than guess the name (and risk
+// dropping real events, or accepting forgeries), we compute the expected HMAC
+// and check it against EVERY incoming header value — hex and base64, with an
+// optional `sha256=` prefix, timing-safe. A request is accepted only if some
+// header carries the correct signature. Fails closed: no secret, or no matching
+// header ⇒ reject. `ZERNIO_WEBHOOK_SIGNATURE_HEADER` can pin the exact header if
+// ever needed, but is not required.
+function timingSafeStrEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false
+  return timingSafeEqual(Buffer.from(a), Buffer.from(b))
+}
+
 function verifyZernioSignature(rawBody: string, req: NextRequest): boolean {
   const secret = process.env.ZERNIO_WEBHOOK_SECRET
-  if (!secret) return true // no secret configured — nothing to verify against
-
-  const candidates = ['x-zernio-signature', 'x-webhook-signature', 'x-signature']
-  const header = candidates.map((h) => req.headers.get(h)).find(Boolean)
-  if (!header) {
-    console.warn('[zernio-webhook] no signature header found; accepting unverified')
-    return true
+  if (!secret) {
+    console.error('[zernio-webhook] ZERNIO_WEBHOOK_SECRET is not set — rejecting.')
+    return false
   }
 
-  const received = header.startsWith('sha256=') ? header.slice('sha256='.length) : header
-  const expected = createHmac('sha256', secret).update(rawBody).digest('hex')
-  if (expected.length !== received.length) return false
-  return timingSafeEqual(Buffer.from(expected), Buffer.from(received))
+  const mac = createHmac('sha256', secret).update(rawBody)
+  const expectedHex = mac.digest('hex')
+  const expectedB64 = createHmac('sha256', secret).update(rawBody).digest('base64')
+
+  // If a specific header is configured, check only that one; else scan all.
+  const pinned = process.env.ZERNIO_WEBHOOK_SIGNATURE_HEADER
+  const values: string[] = []
+  if (pinned) {
+    const v = req.headers.get(pinned)
+    if (v) values.push(v)
+  } else {
+    req.headers.forEach((v) => values.push(v))
+  }
+
+  for (const raw of values) {
+    const v = raw.startsWith('sha256=') ? raw.slice('sha256='.length) : raw
+    if (timingSafeStrEqual(v, expectedHex) || timingSafeStrEqual(v, expectedB64)) {
+      return true
+    }
+  }
+  console.error('[zernio-webhook] no valid signature on request — rejecting.')
+  return false
 }
 
 export async function POST(request: NextRequest) {

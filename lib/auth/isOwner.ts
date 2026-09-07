@@ -20,8 +20,10 @@ export function isOwnerEmail(email: string | null | undefined): boolean {
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean)
   if (owners.length === 0) {
-    console.warn('[security] OWNER_EMAIL is not set — access is NOT restricted to a single user. Set OWNER_EMAIL before connecting real accounts.')
-    return true
+    // Fail CLOSED (audit C4): with no owner configured, deny access rather than
+    // granting everyone owner rights. OWNER_EMAIL must be set in production.
+    console.error('[security] OWNER_EMAIL is not set — denying access. Set OWNER_EMAIL.')
+    return false
   }
   return !!email && owners.includes(email.trim().toLowerCase())
 }

@@ -25,10 +25,9 @@ describe('isOwnerEmail', () => {
     expect(isOwnerEmail('someone@else.com')).toBe(false)
   })
 
-  // Documents the current (known, audited C4) fail-open behaviour so a future
-  // change to fail-closed will intentionally break this test.
-  it('KNOWN ISSUE (C4): fails OPEN when OWNER_EMAIL is unset', () => {
+  // C4 fixed: fails CLOSED when OWNER_EMAIL is unset (deny, don't grant all).
+  it('fails CLOSED when OWNER_EMAIL is unset', () => {
     delete process.env.OWNER_EMAIL
-    expect(isOwnerEmail('anyone@example.com')).toBe(true)
+    expect(isOwnerEmail('anyone@example.com')).toBe(false)
   })
 })
