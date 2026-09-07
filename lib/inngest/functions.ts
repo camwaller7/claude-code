@@ -6,26 +6,9 @@ import type { Platform } from '@/types'
 
 // ─── Inbox sync (runs every 15 min) ──────────────────────────────────────────
 
-export const syncInboxes = inngest.createFunction(
-  {
-    id: 'sync-inboxes',
-    triggers: [
-      { event: 'inbox/sync.requested' },
-      { cron: '*/15 * * * *' },
-    ],
-    retries: 3,
-  },
-  async ({ step }) => {
-    await step.run('sync-gmail', async () => {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/gmail/sync`, { method: 'POST', headers: { 'x-internal-secret': process.env.INTERNAL_API_SECRET ?? '' } })
-      if (!res.ok) throw new Error(`Gmail sync failed: ${res.status} ${await res.text().catch(() => '')}`)
-    })
-    await step.run('sync-x', async () => {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/x/sync`, { method: 'POST', headers: { 'x-internal-secret': process.env.INTERNAL_API_SECRET ?? '' } })
-      if (!res.ok) throw new Error(`X sync failed: ${res.status} ${await res.text().catch(() => '')}`)
-    })
-  }
-)
+// Inbound messaging is push-based via the Zernio webhook (/api/webhooks/zernio),
+// so there is no polling inbox sync. The legacy Gmail/X polling was retired with
+// the direct-OAuth integrations.
 
 // ─── Post publishing ──────────────────────────────────────────────────────────
 
@@ -311,11 +294,5 @@ export const syncAnalytics = inngest.createFunction(
       if (!res.ok) throw new Error(`Zernio insights sync failed: ${res.status} ${await res.text().catch(() => '')}`)
     })
 
-    // Legacy direct-Meta insights pull — kept as a fallback. No-ops (returns a
-    // skipped note, still 200) when Instagram isn't connected via Meta OAuth.
-    await step.run('sync-instagram-insights', async () => {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/instagram/insights`, { method: 'POST', headers: { 'x-internal-secret': process.env.INTERNAL_API_SECRET ?? '' } })
-      if (!res.ok) throw new Error(`Instagram insights sync failed: ${res.status} ${await res.text().catch(() => '')}`)
-    })
   }
 )

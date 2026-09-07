@@ -17,7 +17,22 @@ The legacy webhook/sync writers (`app/api/webhooks/meta`, `app/api/gmail/sync`,
 `app/api/x/sync`, `app/api/instagram/insights`, `app/api/webhooks/telegram`) **do
 not stamp `user_id`**, so in multi-user they produce unowned rows.
 
-**Decision needed: keep direct OAuth as a fallback, or retire it in favour of Zernio?**
+**DECISION (made): retire direct OAuth in favour of Zernio.**
+
+Retired so far (replaced by Zernio; created unowned rows): the inbound-DM / sync /
+insights writers — `app/api/webhooks/meta`, `app/api/gmail/sync`, `app/api/x/sync`,
+`app/api/instagram/insights` (deleted), and the Gmail/X polling + legacy insights
+Inngest steps.
+
+**Still present, intentionally:** the `connect`/`callback` OAuth routes
+(`app/api/{meta,instagram,threads,gmail,x}/*/connect|callback`) and
+`meta/{deauthorize,data-deletion}`. Reason: the **post portal still publishes via
+direct platform tokens** stored by those callbacks in `platform_connections`.
+They can only be removed after post-portal publishing is migrated to Zernio's
+publishing API. Until then the onboarding direct-connect links stay.
+
+*(Original decision framing kept for reference:)*
+**Keep direct OAuth as a fallback, or retire it in favour of Zernio?**
 - **Retire** → delete those routes + the onboarding direct-OAuth links; removes a
   large dual-maintenance surface (App Review, token refresh, 24h window) and makes
   H7/M9 moot. Recommended if Zernio is permanent.
