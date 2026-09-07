@@ -91,7 +91,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'Could not generate a summary. Please try again.' }, { status: 200 })
   }
 
-  await logTokenUsage(provider, model, 'deal_summary', inputTokens, outputTokens, userId).catch(() => {})
+  await logTokenUsage(provider, model, 'deal_summary', inputTokens, outputTokens, userId).catch(e => console.error('[deal-summary] usage log failed:', e))
 
   // Draw down top-up credits when the call ran beyond the plan's allowance.
   if (userId) {
@@ -99,7 +99,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       ? Math.round(((inputTokens / 1000) * OPUS_INPUT_PER_1K + (outputTokens / 1000) * OPUS_OUTPUT_PER_1K) * 100)
       : 0
     if (useInteractionCredit || opusCents > 0) {
-      await consumeCredits(userId, useInteractionCredit ? 1 : 0, opusCents).catch(() => {})
+      await consumeCredits(userId, useInteractionCredit ? 1 : 0, opusCents).catch(e => console.error('[deal-summary] credit consume failed:', e))
     }
   }
 

@@ -246,15 +246,25 @@ async function runTool(name: string, input: Record<string, unknown>, userId?: st
         return `Created deal for "${data.brand_name}" with status "${data.status}"`
       }
       case 'draft_reply': {
-        const { provider, model } = await getLLMSettings()
+        // Respect the caller's tier model (not the global settings row) and
+        // attribute usage to them so it counts toward caps.
+        let provider = 'anthropic'
+        let model: string
+        if (userId) {
+          model = (await resolveModelForUser(userId)).model
+        } else {
+          const s = await getLLMSettings()
+          provider = s.provider
+          model = s.model
+        }
         const { text, inputTokens, outputTokens } = await llmComplete({
-          provider,
+          provider: provider as 'anthropic' | 'openai' | 'google' | 'groq',
           model,
           system: 'You draft short, friendly replies for a content creator. Return ONLY the reply text, 2-4 sentences max.',
           prompt: `Draft a reply to ${input.contact_name}. Context: ${input.conversation_context}`,
           maxTokens: 300,
         })
-        await logTokenUsage(provider, model, 'draft_reply', inputTokens, outputTokens).catch(() => {})
+        await logTokenUsage(provider, model, 'draft_reply', inputTokens, outputTokens, userId).catch(e => console.error('[chat] usage log failed:', e))
         return `Draft reply:\n\n"${text.trim()}"`
       }
       case 'get_clients': {
@@ -478,7 +488,7 @@ export async function POST(request: NextRequest) {
             ? Math.round(((inputTokens / 1000) * OPUS_INPUT_PER_1K + (outputTokens / 1000) * OPUS_OUTPUT_PER_1K) * 100)
             : 0
           if (useInteractionCredit || opusCents > 0) {
-            await consumeCredits(chatUserId, useInteractionCredit ? 1 : 0, opusCents).catch(() => {})
+            await consumeCredits(chatUserId, useInteractionCredit ? 1 : 0, opusCents).catch(e => console.error('[chat] credit consume failed:', e))
           }
         }
       }

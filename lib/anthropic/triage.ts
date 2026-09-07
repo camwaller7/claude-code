@@ -121,7 +121,7 @@ export async function triageMessage(
         // available, otherwise leave the message uncategorized.
         const credits = await getUserCredits(userId)
         if (credits.interaction_credits > 0) {
-          await consumeCredits(userId, 1, 0).catch(() => {})
+          await consumeCredits(userId, 1, 0).catch(e => console.error('[triage] credit consume failed:', e))
         } else {
           return { ...UNCATEGORIZED, reasoning: 'Daily AI limit reached' }
         }
