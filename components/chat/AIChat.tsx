@@ -61,7 +61,10 @@ export function AIChat() {
   }, [])
 
   useEffect(() => {
+    // Seed the greeting when the panel first opens (depends on the async-loaded
+    // persona, so it can't be a lazy initializer).
     if (open && messages.length === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMessages([{
         role: 'assistant',
         content: `Hey! ${persona.assistant_emoji} I'm ${persona.assistant_name}, your personal assistant. I can check your deals, draft replies, update your pipeline, find brand opportunities — just ask me anything about your creator business!`,

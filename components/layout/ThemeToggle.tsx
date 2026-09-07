@@ -8,6 +8,9 @@ export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
 
+  // SSR hydration guard: render nothing until mounted so the icon matches the
+  // resolved theme without a hydration mismatch.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), [])
   if (!mounted) return <div className="h-8 w-8" />
 

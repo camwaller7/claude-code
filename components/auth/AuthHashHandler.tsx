@@ -17,6 +17,8 @@ export function AuthHashHandler() {
     const hash = window.location.hash
     if (!hash || !hash.includes('access_token')) return
 
+    // Processing an OAuth callback hash is an intentional side effect on mount.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setStatus('working')
     const params = new URLSearchParams(hash.slice(1))
     const access_token = params.get('access_token')

@@ -27,6 +27,9 @@ export function WelcomeFlow() {
   const [step, setStep] = useState(0)
 
   useEffect(() => {
+    // localStorage is client-only, so this must run in an effect (not a lazy
+    // initializer, which would run during SSR).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!localStorage.getItem('welcome_done')) setShow(true)
   }, [])
 

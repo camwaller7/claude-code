@@ -35,6 +35,9 @@ export function InboxFilters() {
   const [search, setSearch] = useState(q)
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // Keep the local search box in sync when the URL query param changes
+  // externally (e.g. back/forward navigation).
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setSearch(q), [q])
 
   function onSearchChange(value: string) {
