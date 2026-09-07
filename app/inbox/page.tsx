@@ -7,6 +7,8 @@ import { ConversationList } from '@/components/inbox/ConversationList'
 import { InboxFilters } from '@/components/inbox/InboxFilters'
 import { RealtimeInbox } from '@/components/inbox/RealtimeInbox'
 import { Suspense } from 'react'
+import { Inbox, Search } from 'lucide-react'
+import { EmptyState } from '@/components/ui/EmptyState'
 import type { Conversation } from '@/types'
 
 interface Props {
@@ -47,9 +49,16 @@ export default async function InboxPage({ searchParams }: Props) {
         <InboxFilters />
       </Suspense>
       {!conversations || conversations.length === 0 ? (
-        <div className="flex h-64 flex-col items-center justify-center gap-1 rounded-lg border border-dashed">
-          <p className="text-muted-foreground">{q ? `No results for “${q}”` : 'No conversations yet'}</p>
-          {q && <p className="text-xs text-muted-foreground">Try a different name or handle</p>}
+        <div className="pt-6">
+          <EmptyState
+            icon={q ? Search : Inbox}
+            title={q ? `No results for “${q}”` : 'Your inbox is empty'}
+            description={
+              q
+                ? 'Try a different name or handle.'
+                : 'New Instagram and Facebook DMs will appear here automatically once your accounts are connected.'
+            }
+          />
         </div>
       ) : (
         <ConversationList conversations={conversations as Conversation[]} />

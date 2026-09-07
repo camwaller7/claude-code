@@ -8,6 +8,8 @@ import { currentUserHasFeature } from '@/lib/billing/features'
 import { UpgradeNotice } from '@/components/billing/UpgradeNotice'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
+import { Users } from 'lucide-react'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { NewClientDialog } from '@/components/clients/NewClientDialog'
 import { formatDate } from '@/lib/utils'
 import type { CreatorClient } from '@/types'
@@ -36,8 +38,12 @@ export default async function ClientsPage() {
         <NewClientDialog />
       </div>
       {!clients?.length ? (
-        <div className="flex h-64 items-center justify-center rounded-lg border border-dashed">
-          <p className="text-muted-foreground">No clients yet — add one above</p>
+        <div className="pt-6">
+          <EmptyState
+            icon={Users}
+            title="No clients yet"
+            description="Track your course buyers and coaching clients here — add one with the button above to keep their details and history in one place."
+          />
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

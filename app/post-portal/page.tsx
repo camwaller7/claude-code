@@ -4,6 +4,8 @@ import { createServerClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/auth/requireAuth'
 import { scopedUserId } from '@/lib/auth/currentUser'
 import { Badge } from '@/components/ui/badge'
+import { Send } from 'lucide-react'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { NewPostDialog } from '@/components/post-portal/NewPostDialog'
 import { PublishNowButton } from '@/components/post-portal/PublishNowButton'
 import { formatDate } from '@/lib/utils'
@@ -34,8 +36,12 @@ export default async function PostPortalPage() {
         <NewPostDialog />
       </div>
       {!posts || posts.length === 0 ? (
-        <div className="flex h-64 items-center justify-center rounded-lg border border-dashed">
-          <p className="text-muted-foreground">No posts yet. Create your first post!</p>
+        <div className="pt-6">
+          <EmptyState
+            icon={Send}
+            title="No posts yet"
+            description="Draft, schedule, and auto-publish content to your connected platforms. Create your first post with the button above."
+          />
         </div>
       ) : (
         <div className="flex flex-col gap-2">
