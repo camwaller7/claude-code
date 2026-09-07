@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import confetti from 'canvas-confetti'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { DealDetailDialog } from '@/components/deals/DealDetailDialog'
 import type { Deal, DealStatus } from '@/types'
 
 const STATUSES: DealStatus[] = ['inquiry', 'negotiating', 'contracted', 'delivered', 'paid', 'lost']
@@ -50,7 +51,9 @@ export function DealCard({ deal }: { deal: Deal }) {
   return (
     <Card className="text-sm">
       <CardHeader className="p-3 pb-1">
-        <CardTitle className="text-sm truncate">{deal.brand_name}</CardTitle>
+        <DealDetailDialog deal={deal}>
+          <CardTitle className="text-sm truncate cursor-pointer hover:underline">{deal.brand_name}</CardTitle>
+        </DealDetailDialog>
         {deal.contact_name && (
           <p className="text-xs text-muted-foreground truncate">{deal.contact_name}</p>
         )}

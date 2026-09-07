@@ -55,6 +55,8 @@ export interface Deal {
   agreed_date: string | null
   payment_due_date: string | null
   notes: string | null
+  ai_summary: string | null
+  ai_summary_at: string | null
   created_at: string
 }
 
