@@ -82,10 +82,43 @@ export function MessageThread({ messages }: Props) {
 
   return (
     <div className="flex flex-col gap-4 rounded-lg border p-4">
-      {messages.map((message) => (
-        <MessageBubble key={message.id} message={message} />
-      ))}
+      {messages.map((message, i) => {
+        const prev = messages[i - 1]
+        // Insert a day divider whenever the calendar day changes (or before the
+        // first message), so threads spanning multiple days are easy to follow.
+        const showDivider = !prev || !sameDay(prev.sent_at, message.sent_at)
+        return (
+          <div key={message.id} className="flex flex-col gap-4">
+            {showDivider && message.sent_at && (
+              <div className="flex items-center gap-3 py-1">
+                <div className="h-px flex-1 bg-border" />
+                <span className="text-xs font-medium text-muted-foreground">{dayLabel(message.sent_at)}</span>
+                <div className="h-px flex-1 bg-border" />
+              </div>
+            )}
+            <MessageBubble message={message} />
+          </div>
+        )
+      })}
       <div ref={bottomRef} />
     </div>
   )
+}
+
+// True when two ISO timestamps fall on the same calendar day.
+function sameDay(a?: string, b?: string): boolean {
+  if (!a || !b) return false
+  const da = new Date(a), db = new Date(b)
+  return da.getFullYear() === db.getFullYear() && da.getMonth() === db.getMonth() && da.getDate() === db.getDate()
+}
+
+// "Today" / "Yesterday" / a full date for the day divider.
+function dayLabel(ts: string): string {
+  const d = new Date(ts)
+  const today = new Date()
+  const yesterday = new Date()
+  yesterday.setDate(today.getDate() - 1)
+  if (sameDay(ts, today.toISOString())) return 'Today'
+  if (sameDay(ts, yesterday.toISOString())) return 'Yesterday'
+  return d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: d.getFullYear() === today.getFullYear() ? undefined : 'numeric' })
 }

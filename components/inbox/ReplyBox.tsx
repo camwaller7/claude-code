@@ -13,7 +13,6 @@ interface Props {
 export function ReplyBox({ conversationId, suggestedReply }: Props) {
   const [body, setBody] = useState(suggestedReply ?? '')
   const [loading, setLoading] = useState(false)
-  const [sent, setSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
@@ -33,24 +32,15 @@ export function ReplyBox({ conversationId, suggestedReply }: Props) {
         setError(data?.error ?? 'Failed to send reply — please try again.')
         return
       }
-      setSent(true)
+      // Keep the reply box exactly as it is — just clear the text and re-fetch
+      // the thread so the sent message appears.
       setBody('')
-      // Re-fetch the server component so the just-sent message shows in the
-      // thread without a manual refresh.
       router.refresh()
     } catch {
       setError('Failed to send reply — check your connection and try again.')
     } finally {
       setLoading(false)
     }
-  }
-
-  if (sent) {
-    return (
-      <div className="rounded-lg border p-4 text-sm text-muted-foreground">
-        Reply sent. <button className="underline" onClick={() => setSent(false)}>Send another?</button>
-      </div>
-    )
   }
 
   return (

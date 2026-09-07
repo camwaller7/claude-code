@@ -41,7 +41,7 @@ export default async function ConversationPage({ params }: Props) {
     <div className="flex flex-col gap-4 max-w-3xl mx-auto">
       <Link
         href="/inbox"
-        className="inline-flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        className="inline-flex w-fit items-center gap-1.5 rounded-lg border bg-background px-3 py-1.5 text-sm font-medium text-foreground hover:bg-accent transition-colors"
       >
         <ArrowLeft className="h-4 w-4" />
         Back to inbox
