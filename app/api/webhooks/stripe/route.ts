@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
 import { adminSupabase } from '@/lib/supabase/admin'
 import { getStripe } from '@/lib/stripe/client'
+import { addCredits } from '@/lib/billing/credits'
 
 // Stripe webhook: the source of truth for subscription state. Verifies the
 // signature, then upserts the subscriptions table so the app's plan gating and
@@ -88,6 +89,20 @@ export async function POST(request: Request) {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session
+
+        // One-time usage top-up: grant the credits carried in the metadata.
+        if (session.mode === 'payment' && session.metadata?.credit_kind) {
+          const userId = session.metadata.user_id || session.client_reference_id
+          if (userId) {
+            await addCredits(
+              userId,
+              Number(session.metadata.grant_interactions ?? 0),
+              Number(session.metadata.grant_opus_cents ?? 0)
+            )
+          }
+          break
+        }
+
         const subId = typeof session.subscription === 'string' ? session.subscription : session.subscription?.id
         if (subId) {
           const sub = await getStripe().subscriptions.retrieve(subId)

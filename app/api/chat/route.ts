@@ -10,6 +10,8 @@ import { llmComplete } from '@/lib/llm/client'
 import { checkAIBudget } from '@/lib/llm/budget'
 import { scopedUserId, multiUserEnabled } from '@/lib/auth/currentUser'
 import { resolveModelForUser } from '@/lib/billing/modelRouting'
+import { consumeCredits } from '@/lib/billing/credits'
+import { OPUS, OPUS_INPUT_PER_1K, OPUS_OUTPUT_PER_1K } from '@/lib/billing/tiers'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -388,16 +390,20 @@ export async function POST(request: NextRequest) {
   // interaction cap can block the call outright.
   let activeProvider = llm.provider
   let activeModel = llm.model
+  let useInteractionCredit = false
+  let useOpusCredit = false
   if (multiUserEnabled() && chatUserId) {
     const decision = await resolveModelForUser(chatUserId, requestedModel)
     if (decision.blocked === 'daily_limit') {
       return new Response(
-        "You've reached today's AI limit on the Starter plan. It resets tomorrow — or upgrade to Growth for unlimited Sonnet.",
+        "You've reached today's AI limit. It resets tomorrow — or buy more AI actions on the Billing page, or upgrade to Growth for unlimited Sonnet.",
         { headers: { 'Content-Type': 'text/plain; charset=utf-8' } }
       )
     }
     activeProvider = 'anthropic'
     activeModel = decision.model
+    useInteractionCredit = !!decision.useInteractionCredit
+    useOpusCredit = !!decision.useOpusCredit
   }
 
   // Monthly AI spend cap — refuse before spending when the budget is reached.
@@ -468,6 +474,17 @@ export async function POST(request: NextRequest) {
           break
         }
         await logTokenUsage('anthropic', model, 'chat', inputTokens, outputTokens, chatUserId).catch(() => {})
+
+        // Draw down purchased top-up credits for calls served beyond the plan's
+        // included allowance.
+        if (chatUserId) {
+          const opusCents = useOpusCredit && model === OPUS
+            ? Math.round(((inputTokens / 1000) * OPUS_INPUT_PER_1K + (outputTokens / 1000) * OPUS_OUTPUT_PER_1K) * 100)
+            : 0
+          if (useInteractionCredit || opusCents > 0) {
+            await consumeCredits(chatUserId, useInteractionCredit ? 1 : 0, opusCents).catch(() => {})
+          }
+        }
       }
 
       const runOtherProvider = async () => {

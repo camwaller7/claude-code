@@ -7,6 +7,7 @@ import { multiUserEnabled } from '@/lib/auth/currentUser'
 import { getUserTier } from '@/lib/billing/subscription'
 import { tierConfig, HAIKU } from '@/lib/billing/tiers'
 import { getDailyInteractionCount } from '@/lib/billing/limits'
+import { getUserCredits, consumeCredits } from '@/lib/billing/credits'
 import type { MessageCategory } from '@/types'
 
 interface TriageResult {
@@ -116,7 +117,14 @@ export async function triageMessage(
     if (cfg.dailyInteractionCap != null) {
       const used = await getDailyInteractionCount(userId)
       if (used >= cfg.dailyInteractionCap) {
-        return { ...UNCATEGORIZED, reasoning: 'Daily AI limit reached' }
+        // Over the included allowance — spend a purchased interaction credit if
+        // available, otherwise leave the message uncategorized.
+        const credits = await getUserCredits(userId)
+        if (credits.interaction_credits > 0) {
+          await consumeCredits(userId, 1, 0).catch(() => {})
+        } else {
+          return { ...UNCATEGORIZED, reasoning: 'Daily AI limit reached' }
+        }
       }
     }
   } else {

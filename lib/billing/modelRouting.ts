@@ -1,6 +1,7 @@
 import { tierConfig, HAIKU, OPUS } from '@/lib/billing/tiers'
 import { getUserTier } from '@/lib/billing/subscription'
 import { getDailyInteractionCount, getOpusWeekSpendCents } from '@/lib/billing/limits'
+import { getUserCredits } from '@/lib/billing/credits'
 
 export interface ModelDecision {
   model: string
@@ -11,6 +12,10 @@ export interface ModelDecision {
   capped?: 'opus_weekly' | null
   // Set when the daily interaction cap blocks the call entirely (Starter).
   blocked?: 'daily_limit' | null
+  // This call is being served from purchased top-up credits; the caller must
+  // consume them after the call succeeds.
+  useInteractionCredit?: boolean
+  useOpusCredit?: boolean
   reason?: string
 }
 
@@ -27,26 +32,40 @@ export async function resolveModelForUser(
   const tier = await getUserTier(userId)
   const cfg = tierConfig(tier)
 
-  // Starter daily interaction cap blocks the call outright.
+  // Starter daily interaction cap: once the included allowance is spent, fall
+  // back to purchased interaction credits; block only when those are gone too.
+  let useInteractionCredit = false
   if (cfg.dailyInteractionCap != null) {
     const used = await getDailyInteractionCount(userId)
     if (used >= cfg.dailyInteractionCap) {
-      return { model: cfg.defaultModel, tier, blocked: 'daily_limit', reason: `Daily limit of ${cfg.dailyInteractionCap} reached` }
+      const credits = await getUserCredits(userId)
+      if (credits.interaction_credits > 0) {
+        useInteractionCredit = true
+      } else {
+        return { model: cfg.defaultModel, tier, blocked: 'daily_limit', reason: `Daily limit of ${cfg.dailyInteractionCap} reached` }
+      }
     }
   }
 
   // Pick the requested model if the tier allows it, else the tier default.
   let model = requestedModel && cfg.models.includes(requestedModel) ? requestedModel : cfg.defaultModel
 
-  // Pro Opus weekly cap: drop to Haiku once exceeded.
+  // Pro Opus weekly cap: once exceeded, keep Opus only if the user has Opus
+  // top-up credit; otherwise drop to Haiku.
   let capped: ModelDecision['capped'] = null
+  let useOpusCredit = false
   if (model === OPUS && cfg.opusWeeklyCapCents != null) {
     const spent = await getOpusWeekSpendCents(userId)
     if (spent >= cfg.opusWeeklyCapCents) {
-      model = HAIKU
-      capped = 'opus_weekly'
+      const credits = await getUserCredits(userId)
+      if (credits.opus_credit_cents > 0) {
+        useOpusCredit = true
+      } else {
+        model = HAIKU
+        capped = 'opus_weekly'
+      }
     }
   }
 
-  return { model, tier, requested: requestedModel ?? undefined, capped }
+  return { model, tier, requested: requestedModel ?? undefined, capped, useInteractionCredit, useOpusCredit }
 }

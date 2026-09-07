@@ -5,13 +5,16 @@ import { getUserSubscription, hasActivePlan } from '@/lib/billing/subscription'
 import { billingEnabled } from '@/lib/stripe/client'
 import { BillingActions } from '@/components/billing/BillingActions'
 import { PricingPlans } from '@/components/billing/PricingPlans'
+import { TopUpPacks } from '@/components/billing/TopUpPacks'
+import { getUserCredits, TOPUPS } from '@/lib/billing/credits'
 
 export default async function BillingPage() {
   // subscription:false so an unsubscribed user can actually reach this page.
   const session = await requireAuth({ subscription: false })
-  const [sub, active] = await Promise.all([
+  const [sub, active, credits] = await Promise.all([
     getUserSubscription(session.user.id),
     hasActivePlan(session.user.id),
+    getUserCredits(session.user.id),
   ])
 
   return (
@@ -36,6 +39,17 @@ export default async function BillingPage() {
             )}
           </div>
           <BillingActions hasPlan={active} />
+        </div>
+      )}
+
+      {/* Usage top-ups — only relevant once subscribed. */}
+      {active && billingEnabled() && (
+        <div className="mx-auto w-full max-w-lg">
+          <TopUpPacks
+            packs={Object.values(TOPUPS).map(p => ({ kind: p.kind, label: p.label, description: p.description }))}
+            interactionCredits={credits.interaction_credits}
+            opusCreditCents={credits.opus_credit_cents}
+          />
         </div>
       )}
 
