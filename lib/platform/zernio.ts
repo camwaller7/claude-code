@@ -74,6 +74,8 @@ export interface ZernioAccount {
   username?: string
   name?: string
   displayName?: string
+  // Zernio profile (workspace) id this account belongs to.
+  profileId?: string
 }
 
 // The id of an account, whichever key Zernio used on this response.
@@ -86,12 +88,30 @@ export function listZernioAccounts() {
   return zernioFetch<{ accounts?: ZernioAccount[] } | ZernioAccount[]>('/v1/accounts')
 }
 
-// Generate a hosted OAuth URL for the owner to connect a platform via Zernio.
-export function getZernioConnectUrl(platform: ZernioPlatform, redirectUrl?: string) {
-  return zernioFetch<{ url: string }>(`/v1/connect/${platform}`, {
-    method: 'POST',
-    body: redirectUrl ? { redirectUrl } : {},
-  })
+// The Zernio profile (workspace) id that connected accounts live under. In our
+// shared-workspace model every app user connects into the same Zernio profile,
+// so this is a single constant: taken from ZERNIO_PROFILE_ID, else derived from
+// any already-connected account's profileId.
+export async function getZernioProfileId(): Promise<string | undefined> {
+  const fromEnv = process.env.ZERNIO_PROFILE_ID
+  if (fromEnv) return fromEnv
+  const res = await listZernioAccounts()
+  if (!res.ok || !res.data) return undefined
+  const accounts = Array.isArray(res.data) ? res.data : res.data.accounts ?? []
+  return accounts.map(a => a.profileId).find(Boolean)
+}
+
+// Generate a hosted OAuth URL to connect a platform via Zernio. The connect
+// endpoint is GET /v1/connect/{platform}?profileId=…&redirect_url=… and returns
+// { authUrl } to send the user to. On completion Zernio redirects to
+// redirectUrl with connected/platform/profileId/accountId/username appended.
+export async function getZernioConnectUrl(platform: ZernioPlatform, redirectUrl: string) {
+  const profileId = await getZernioProfileId()
+  if (!profileId) {
+    return { ok: false as const, status: 0, error: 'No Zernio profileId available (set ZERNIO_PROFILE_ID).' }
+  }
+  const q = new URLSearchParams({ profileId, redirect_url: redirectUrl })
+  return zernioFetch<{ authUrl?: string; state?: string }>(`/v1/connect/${platform}?${q.toString()}`)
 }
 
 // Resolve the Zernio social-account id for a platform. This is a single-creator

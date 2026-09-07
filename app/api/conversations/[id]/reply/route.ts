@@ -8,6 +8,7 @@ import { META_GRAPH_VERSION } from '@/lib/platform/metaVersion'
 import { metaDebug } from '@/lib/log/debug'
 import { appsecretProof } from '@/lib/platform/appsecretProof'
 import { zernioEnabled, sendZernioMessage, resolveZernioAccountId } from '@/lib/platform/zernio'
+import { multiUserEnabled } from '@/lib/auth/currentUser'
 
 const META_MESSAGING_WINDOW_MS = 24 * 60 * 60 * 1000
 
@@ -26,9 +27,21 @@ async function sendReply(conv: Record<string, unknown>, body: string): Promise<S
     // Zernio/Meta still enforce the 24h window server-side and return an error
     // we surface, so no separate window check is needed here.
     if (zernioEnabled()) {
-      // Zernio's send endpoint requires the sending accountId. One account per
-      // platform in this single-creator app, so resolve it by platform.
-      const accountId = await resolveZernioAccountId(platform)
+      // Zernio's send endpoint requires the sending accountId. In multi-user
+      // mode send from the conversation OWNER's connected account; otherwise
+      // (single-creator) resolve the one account for this platform.
+      let accountId: string | undefined
+      if (multiUserEnabled() && conv.user_id) {
+        const { data: za } = await adminSupabase
+          .from('zernio_accounts')
+          .select('zernio_account_id')
+          .eq('user_id', conv.user_id as string)
+          .eq('platform', platform)
+          .maybeSingle()
+        accountId = za?.zernio_account_id as string | undefined
+      } else {
+        accountId = await resolveZernioAccountId(platform)
+      }
       if (!accountId) {
         return { ok: false, status: 'failed', error: `No Zernio ${platform} account is connected to send from.` }
       }

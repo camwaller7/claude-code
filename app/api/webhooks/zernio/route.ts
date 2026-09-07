@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { adminSupabase } from '@/lib/supabase/admin'
 import { triageMessage } from '@/lib/anthropic/triage'
+import { multiUserEnabled } from '@/lib/auth/currentUser'
 import type { Platform } from '@/types'
 
 // Zernio inbound webhook. Zernio POSTs unified inbox events here (configured via
@@ -22,6 +23,22 @@ interface ZernioMessageEvent {
     text: string | null
     sender?: { id: string; name?: string; username?: string }
   }
+  // The connected account that received/sent this event. account.id is the
+  // Zernio social account id — the key we route inbound events to the owning
+  // app user by (see zernio_accounts).
+  account?: { id: string; accountId?: string; platform?: string; username?: string }
+}
+
+// Resolve the app user that owns a Zernio account. Returns null when multi-user
+// is off (single-tenant: rows carry no user_id) or the account isn't mapped yet.
+async function resolveOwningUserId(accountId?: string): Promise<string | null> {
+  if (!multiUserEnabled() || !accountId) return null
+  const { data } = await adminSupabase
+    .from('zernio_accounts')
+    .select('user_id')
+    .eq('zernio_account_id', accountId)
+    .maybeSingle()
+  return (data?.user_id as string | undefined) ?? null
 }
 
 // Zernio signs webhook bodies with HMAC-SHA256 of the raw body keyed by the
@@ -76,6 +93,16 @@ export async function POST(request: NextRequest) {
     const text = msg.text ?? ''
     const now = new Date().toISOString()
 
+    // Multi-user routing: attribute this event to the app user that owns the
+    // receiving Zernio account. Null (and omitted from writes) in single-tenant
+    // mode, or before migration 021 adds the user_id column — so this stays safe
+    // to deploy ahead of the migration.
+    const userId = await resolveOwningUserId(payload.account?.id ?? payload.account?.accountId)
+    const owner = userId ? { user_id: userId } : {}
+    if (multiUserEnabled() && !userId) {
+      console.warn('[zernio-webhook] no app user mapped for account', payload.account?.id, '— ingesting unattributed')
+    }
+
     if (isOutgoing) {
       // On message.sent the "sender" is our own business account, NOT the
       // contact — do not touch contact_name/handle. Only update an EXISTING
@@ -97,6 +124,7 @@ export async function POST(request: NextRequest) {
           body: text,
           external_message_id: msg.platformMessageId || msg.id,
           sent_at: now,
+          ...owner,
         },
         { onConflict: 'external_message_id', ignoreDuplicates: true }
       )
@@ -126,6 +154,7 @@ export async function POST(request: NextRequest) {
           contact_handle: handle,
           status: 'needs_reply',
           last_message_at: now,
+          ...owner,
         },
         { onConflict: 'platform,external_thread_id' }
       )
@@ -141,6 +170,7 @@ export async function POST(request: NextRequest) {
         body: text,
         external_message_id: msg.platformMessageId || msg.id,
         sent_at: now,
+        ...owner,
       },
       { onConflict: 'external_message_id', ignoreDuplicates: true }
     )
