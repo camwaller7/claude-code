@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
@@ -35,10 +35,15 @@ export function LookSettings({ initialTheme }: { initialTheme: string }) {
   const [theme, setTheme] = useState(initialTheme)
   const [saving, setSaving] = useState(false)
 
+  // Apply the selected brand theme to the document as a side effect of the
+  // state change (not inside the click handler) so the DOM mutation is React-safe.
+  useEffect(() => {
+    document.documentElement.dataset.brand = theme
+    try { localStorage.setItem('brand_theme', theme) } catch { /* ignore */ }
+  }, [theme])
+
   async function pick(value: string) {
     setTheme(value)
-    document.documentElement.dataset.brand = value
-    localStorage.setItem('brand_theme', value)
     setSaving(true)
     try {
       const res = await fetch('/api/settings', {

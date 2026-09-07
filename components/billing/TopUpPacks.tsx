@@ -30,7 +30,7 @@ export function TopUpPacks({
         body: JSON.stringify({ kind }),
       })
       const data = (await res.json().catch(() => null)) as { url?: string; error?: string } | null
-      if (data?.url) { window.location.href = data.url; return }
+      if (data?.url) { window.location.assign(data.url); return }
       setError(data?.error ?? 'Something went wrong. Please try again.')
     } catch {
       setError('Something went wrong. Please try again.')

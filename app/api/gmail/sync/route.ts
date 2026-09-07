@@ -93,7 +93,6 @@ export async function POST(request: Request) {
 
       const firstMsg = thread.messages[0]
       const headers = firstMsg.payload.headers
-      const subject = getHeader(headers, 'subject')
       const from = getHeader(headers, 'from')
       const { name: contactName, email: contactEmail } = parseFrom(from)
 

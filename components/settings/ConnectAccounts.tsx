@@ -30,7 +30,7 @@ export function ConnectAccounts({ connected }: { connected: ConnectedAccount[] }
       const res = await fetch(`/api/zernio/connect/${platform}`)
       const data = (await res.json().catch(() => null)) as { authUrl?: string; error?: string } | null
       if (data?.authUrl) {
-        window.location.href = data.authUrl
+        window.location.assign(data.authUrl)
         return
       }
       setError(data?.error ?? 'Could not start the connection. Please try again.')
