@@ -21,12 +21,22 @@ interface Persona {
   assistant_emoji: string
 }
 
+interface ModelOption {
+  id: string
+  label: string
+  disabled: boolean
+  reason?: string
+}
+
 export function AIChat() {
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [persona, setPersona] = useState<Persona>({ assistant_name: 'Elle', assistant_emoji: '\u2728' })
+  const [models, setModels] = useState<ModelOption[]>([])
+  const [showSwitcher, setShowSwitcher] = useState(false)
+  const [selectedModel, setSelectedModel] = useState<string | undefined>(undefined)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -35,6 +45,17 @@ export function AIChat() {
       .then(r => r.json())
       .then(data => {
         if (data?.assistant_name) setPersona({ assistant_name: data.assistant_name, assistant_emoji: data.assistant_emoji ?? '\u2728' })
+      })
+      .catch(() => {})
+    // Tier-aware model switcher options (multi-user only).
+    fetch('/api/billing/models')
+      .then(r => r.json())
+      .then((data: { switcher?: boolean; defaultModel?: string; models?: ModelOption[] }) => {
+        if (data?.switcher && data.models?.length) {
+          setShowSwitcher(true)
+          setModels(data.models)
+          setSelectedModel(data.defaultModel ?? data.models[0]?.id)
+        }
       })
       .catch(() => {})
   }, [])
@@ -71,6 +92,7 @@ export function AIChat() {
           messages: newMessages
             .filter(m => m.content.trim().length > 0)
             .map(m => ({ role: m.role, content: m.content })),
+          ...(selectedModel ? { model: selectedModel } : {}),
         }),
       })
       if (!res.ok || !res.body) throw new Error('chat failed')
@@ -188,6 +210,31 @@ export function AIChat() {
 
           {/* Input */}
           <div className="border-t p-3">
+            {showSwitcher && models.length > 1 && (
+              <div className="mb-2 flex items-center gap-2">
+                <span className="text-[11px] text-muted-foreground">Model</span>
+                <div className="flex gap-1">
+                  {models.map(m => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      title={m.reason ?? m.label}
+                      disabled={m.disabled}
+                      onClick={() => setSelectedModel(m.id)}
+                      className={cn(
+                        'rounded-full border px-2.5 py-0.5 text-[11px] transition-colors',
+                        m.disabled && 'cursor-not-allowed opacity-40',
+                        selectedModel === m.id
+                          ? 'border-primary bg-primary text-primary-foreground'
+                          : 'border-input bg-background text-foreground hover:bg-accent'
+                      )}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <form
               onSubmit={e => { e.preventDefault(); send() }}
               className="flex items-center gap-2 rounded-xl border bg-muted/40 px-3 py-2"
