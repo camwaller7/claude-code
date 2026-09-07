@@ -33,6 +33,11 @@ export interface Conversation {
   created_at: string
 }
 
+export interface MessageAttachment {
+  type: string
+  url: string
+}
+
 export interface Message {
   id: string
   conversation_id: string
@@ -40,6 +45,7 @@ export interface Message {
   body: string
   ai_category: MessageCategory | null
   ai_draft_reply: string | null
+  attachments: MessageAttachment[] | null
   sent_at: string
   created_at: string
 }

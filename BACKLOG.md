@@ -15,8 +15,17 @@ users. Ordered roughly by priority. Checked items are done.
   sending, and the Zernio webhook reconciles the echo with the pending app-sent
   row instead of inserting a second copy.
 
-- [ ] **Rich media in messages.** The thread only renders text. Inbound and
-  outbound **images, videos, voice notes, and shared posts** are not shown.
+- [x] **Rich media in messages.** Attachments are stored on the message
+  (`attachments` jsonb, migration 025) at webhook ingest and rendered by type in
+  `MessageThread` (image/video/audio player, a card for a shared post).
+  Zernio-hosted media is streamed through an authenticated proxy
+  (`/api/media`) since it needs the API key; media-only messages no longer show
+  an empty text bubble. NOTE: if IG/FB webhook attachment URLs turn out to need
+  Zernio's per-message resolve endpoint rather than a directly-fetchable URL,
+  the proxy will need to call that endpoint — verify against live media.
+
+  *(original notes:)* Inbound and outbound images, videos, voice notes, and
+  shared posts were not shown.
   Zernio delivers these as `attachments[]` on `message.received` / `message.sent`
   (each with `type`, `url`, and for IG/FB a `refreshUrl`/authenticated media
   endpoint — see the Zernio SDK `PostAnalytics`/attachment types). Work:
@@ -29,14 +38,14 @@ users. Ordered roughly by priority. Checked items are done.
 
 ## Deals
 
-- [ ] **Open a deal's conversation from the deals portal.** A deal linked to a
-  conversation (`deals.conversation_id`) should have a button that navigates
-  straight to `/inbox/{conversation_id}`. Work: in `app/deals/page.tsx` /
-  the deal card component, add a "View messages" link when `conversation_id`
-  is set.
+- [x] **Open a deal's conversation from the deals portal.** DealCard shows a
+  "View messages" link to `/inbox/{conversation_id}` when the deal is linked to
+  a conversation (also inside the deal detail dialog).
 
-- [ ] **Deal detail view: AI preview + notes.** Clicking a deal should open a
-  detail panel with:
+- [x] **Deal detail view: AI preview + notes.** Clicking a deal's title opens
+  `DealDetailDialog` with an AI preview (POST /api/deals/[id]/summary — charged
+  against AI usage via tier routing + credits, cached on the deal) and an
+  editable notes section. Original spec:
   - An **AI-generated summary/preview** of the deal (drafted from the linked
     conversation + deal fields), which **consumes the user's AI credits/usage**
     (route it through the same tier model routing + `logTokenUsage`).
@@ -47,8 +56,12 @@ users. Ordered roughly by priority. Checked items are done.
 
 ## Dashboard
 
-- [ ] **Platform filter should list every linkable account.** The dashboard
-  platform filter currently shows only "All" and Instagram. It should include
+- [x] **Platform filter lists every linkable account.** The dashboard filter
+  now always offers Instagram, Facebook, X, Gmail and Telegram (plus any other
+  connected platform), instead of only platforms with detected data.
+
+  *(original note:)* The dashboard platform filter previously showed only
+  "All" and Instagram. It should include
   all accounts the user can link (Instagram, Facebook, X, Threads, TikTok,
   Gmail, Telegram) — at least all connected ones. Investigate
   `lib/platform/linked.ts` (`getLinkedPlatforms`): confirm it returns Facebook

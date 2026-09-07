@@ -22,6 +22,7 @@ interface ZernioMessageEvent {
     direction: 'incoming' | 'outgoing'
     text: string | null
     sender?: { id: string; name?: string; username?: string }
+    attachments?: { type?: string; originalType?: string; url?: string; payload?: unknown }[]
   }
   // The connected account that received/sent this event. account.id is the
   // Zernio social account id — the key we route inbound events to the owning
@@ -99,6 +100,14 @@ export async function POST(request: NextRequest) {
     // to deploy ahead of the migration.
     const userId = await resolveOwningUserId(payload.account?.id ?? payload.account?.accountId)
     const owner = userId ? { user_id: userId } : {}
+
+    // Normalise attachments (images/videos/voice notes/shared posts) for storage
+    // so the thread can render them. Only set the column when there are any, so
+    // the write stays safe before migration 025 adds the column.
+    const attachments = (msg.attachments ?? [])
+      .map(a => ({ type: (a.type ?? a.originalType ?? 'file'), url: a.url }))
+      .filter(a => a.url)
+    const media = attachments.length ? { attachments } : {}
     if (multiUserEnabled() && !userId) {
       console.warn('[zernio-webhook] no app user mapped for account', payload.account?.id, '— ingesting unattributed')
     }
@@ -152,6 +161,7 @@ export async function POST(request: NextRequest) {
             external_message_id: extId,
             sent_at: now,
             ...owner,
+            ...media,
           },
           { onConflict: 'external_message_id', ignoreDuplicates: true }
         )
@@ -199,6 +209,7 @@ export async function POST(request: NextRequest) {
         external_message_id: msg.platformMessageId || msg.id,
         sent_at: now,
         ...owner,
+        ...media,
       },
       { onConflict: 'external_message_id', ignoreDuplicates: true }
     )

@@ -1,8 +1,50 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import type { Message, Conversation } from '@/types'
+import { FileText } from 'lucide-react'
+import type { Message, MessageAttachment, Conversation } from '@/types'
 import { cn, formatTime } from '@/lib/utils'
+
+// Zernio-hosted media needs the API key, so route it through our authenticated
+// proxy; other (public) URLs load directly.
+function mediaSrc(url: string): string {
+  try {
+    const h = new URL(url).hostname
+    if (h === 'zernio.com' || h.endsWith('.zernio.com')) return `/api/media?url=${encodeURIComponent(url)}`
+  } catch { /* fall through */ }
+  return url
+}
+
+function normalizeType(type: string): 'image' | 'video' | 'audio' | 'share' | 'file' {
+  const t = type.toLowerCase()
+  if (t.includes('image') || t === 'sticker' || t === 'photo') return 'image'
+  if (t.includes('video') || t === 'reel' || t === 'gif') return 'video'
+  if (t.includes('audio') || t === 'voice') return 'audio'
+  if (t === 'share' || t === 'story_mention' || t === 'post') return 'share'
+  return 'file'
+}
+
+function Attachment({ attachment }: { attachment: MessageAttachment }) {
+  const kind = normalizeType(attachment.type)
+  const src = mediaSrc(attachment.url)
+  if (kind === 'image') {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={src} alt="attachment" className="max-h-64 rounded-lg" />
+  }
+  if (kind === 'video') {
+    return <video src={src} controls className="max-h-64 rounded-lg" />
+  }
+  if (kind === 'audio') {
+    return <audio src={src} controls className="w-56" />
+  }
+  // share / file — link out with a small card.
+  return (
+    <a href={src} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm hover:bg-accent transition-colors">
+      <FileText className="h-4 w-4 text-muted-foreground" />
+      {kind === 'share' ? 'Shared post' : 'Attachment'}
+    </a>
+  )
+}
 
 interface Props {
   messages: Message[]
@@ -13,18 +55,32 @@ function MessageBubble({ message }: { message: Message }) {
   const isOutbound = message.direction === 'outbound'
   const [showDraft, setShowDraft] = useState(false)
 
+  const attachments = message.attachments ?? []
+
   return (
     <div className={cn('flex flex-col gap-1', isOutbound ? 'items-end' : 'items-start')}>
-      <div
-        className={cn(
-          'max-w-[70%] rounded-lg px-4 py-2 text-sm whitespace-pre-wrap break-words',
-          isOutbound
-            ? 'bg-primary text-primary-foreground'
-            : 'bg-muted text-foreground'
-        )}
-      >
-        {message.body}
-      </div>
+      {/* Media attachments (images, video, voice notes, shared posts). */}
+      {attachments.length > 0 && (
+        <div className={cn('flex max-w-[70%] flex-col gap-1.5', isOutbound ? 'items-end' : 'items-start')}>
+          {attachments.map((a, i) => (
+            <Attachment key={i} attachment={a} />
+          ))}
+        </div>
+      )}
+      {/* Text bubble — skip it entirely for media-only messages so there's no
+          empty grey bubble. */}
+      {message.body?.trim() && (
+        <div
+          className={cn(
+            'max-w-[70%] rounded-lg px-4 py-2 text-sm whitespace-pre-wrap break-words',
+            isOutbound
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-muted text-foreground'
+          )}
+        >
+          {message.body}
+        </div>
+      )}
       {!isOutbound && message.ai_draft_reply && (
         <div className="max-w-[70%]">
           <button
