@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 
@@ -14,6 +15,7 @@ export function ReplyBox({ conversationId, suggestedReply }: Props) {
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -33,6 +35,9 @@ export function ReplyBox({ conversationId, suggestedReply }: Props) {
       }
       setSent(true)
       setBody('')
+      // Re-fetch the server component so the just-sent message shows in the
+      // thread without a manual refresh.
+      router.refresh()
     } catch {
       setError('Failed to send reply — check your connection and try again.')
     } finally {

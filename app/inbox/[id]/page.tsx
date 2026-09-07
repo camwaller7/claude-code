@@ -1,3 +1,5 @@
+import Link from 'next/link'
+import { ArrowLeft } from 'lucide-react'
 import { createServerClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/auth/requireAuth'
 import { MessageThread } from '@/components/inbox/MessageThread'
@@ -37,6 +39,13 @@ export default async function ConversationPage({ params }: Props) {
 
   return (
     <div className="flex flex-col gap-4 max-w-3xl mx-auto">
+      <Link
+        href="/inbox"
+        className="inline-flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to inbox
+      </Link>
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <h1 className="text-xl font-bold truncate">{conv.contact_name}</h1>

@@ -117,17 +117,45 @@ export async function POST(request: NextRequest) {
 
       if (!conv) return NextResponse.json({ received: true }, { status: 200 })
 
-      await adminSupabase.from('messages').upsert(
-        {
-          conversation_id: conv.id,
-          direction: 'outbound',
-          body: text,
-          external_message_id: msg.platformMessageId || msg.id,
-          sent_at: now,
-          ...owner,
-        },
-        { onConflict: 'external_message_id', ignoreDuplicates: true }
-      )
+      const extId = msg.platformMessageId || msg.id
+
+      // Reconcile the echo with a reply just sent from the app: the reply route
+      // inserts the outbound message with no external id, then Zernio echoes it
+      // back here. Match that pending row (same thread + body, no external id,
+      // sent in the last few minutes) and attach the external id to it instead
+      // of inserting a second copy — this is what caused replies to appear
+      // twice. Fall back to inserting when there's no pending row (e.g. a reply
+      // the creator sent from the native app).
+      const { data: pending } = await adminSupabase
+        .from('messages')
+        .select('id')
+        .eq('conversation_id', conv.id)
+        .eq('direction', 'outbound')
+        .eq('body', text)
+        .is('external_message_id', null)
+        .gte('sent_at', new Date(Date.now() - 5 * 60_000).toISOString())
+        .order('sent_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (pending) {
+        await adminSupabase
+          .from('messages')
+          .update({ external_message_id: extId })
+          .eq('id', pending.id)
+      } else {
+        await adminSupabase.from('messages').upsert(
+          {
+            conversation_id: conv.id,
+            direction: 'outbound',
+            body: text,
+            external_message_id: extId,
+            sent_at: now,
+            ...owner,
+          },
+          { onConflict: 'external_message_id', ignoreDuplicates: true }
+        )
+      }
 
       await adminSupabase
         .from('conversations')
