@@ -301,6 +301,28 @@ export async function POST(
     return NextResponse.json({ error: 'Conversation not found' }, { status: 404 })
   }
 
+  // Insert the outbound row BEFORE sending. Zernio can fire the message.sent
+  // echo back to our webhook before this route returns, and the webhook
+  // reconciles the echo against this pending row (same thread + body, no
+  // external id). If we inserted after sending, a fast echo would find no row
+  // and insert a duplicate — which is what caused a quickly-sent second reply
+  // to appear twice.
+  const { data: msg, error } = await adminSupabase
+    .from('messages')
+    .insert({
+      conversation_id: id,
+      direction: 'outbound',
+      body,
+      sent_at: new Date().toISOString(),
+      send_status: 'sending',
+      // Inherit the conversation's owner so the reply shows under per-user reads.
+      ...(conv.user_id ? { user_id: conv.user_id } : {}),
+    })
+    .select()
+    .single()
+
+  if (error) return NextResponse.json({ error: 'Could not save reply' }, { status: 500 })
+
   let sendResult: SendResult
   try {
     sendResult = await sendReply(conv, body)
@@ -309,22 +331,12 @@ export async function POST(
     sendResult = { ok: false, status: 'failed', error: sendErr instanceof Error ? sendErr.message : String(sendErr) }
   }
 
-  const { data: msg, error } = await adminSupabase
+  // Record the final send outcome on the row we already created.
+  await adminSupabase
     .from('messages')
-    .insert({
-      conversation_id: id,
-      direction: 'outbound',
-      body,
-      sent_at: new Date().toISOString(),
-      send_status: sendResult.status,
-      send_error: sendResult.error ?? null,
-      // Inherit the conversation's owner so the reply shows under per-user reads.
-      ...(conv.user_id ? { user_id: conv.user_id } : {}),
-    })
-    .select()
-    .single()
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    .update({ send_status: sendResult.status, send_error: sendResult.error ?? null })
+    .eq('id', msg.id)
+  const finalMsg = { ...msg, send_status: sendResult.status, send_error: sendResult.error ?? null }
 
   // Only mark the conversation "replied" if the message actually left the app
   // (or there's genuinely nowhere for it to go, e.g. Threads/TikTok).
@@ -337,10 +349,10 @@ export async function POST(
 
   if (!sendResult.ok) {
     return NextResponse.json(
-      { ...msg, error: sendResult.error ?? 'Reply was not sent' },
+      { ...finalMsg, error: sendResult.error ?? 'Reply was not sent' },
       { status: 502 }
     )
   }
 
-  return NextResponse.json(msg, { status: 201 })
+  return NextResponse.json(finalMsg, { status: 201 })
 }
