@@ -1,7 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { MessageSquare } from 'lucide-react'
 import { toast } from 'sonner'
 import confetti from 'canvas-confetti'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -72,6 +74,15 @@ export function DealCard({ deal }: { deal: Deal }) {
             ))}
           </SelectContent>
         </Select>
+        {deal.conversation_id && (
+          <Link
+            href={`/inbox/${deal.conversation_id}`}
+            className="flex items-center justify-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium text-foreground hover:bg-accent transition-colors"
+          >
+            <MessageSquare className="h-3.5 w-3.5" />
+            View messages
+          </Link>
+        )}
       </CardContent>
     </Card>
   )

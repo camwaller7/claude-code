@@ -26,6 +26,10 @@ const PLATFORM_LABELS: Record<string, string> = {
   telegram: 'Telegram',
 }
 
+// Every messaging-capable platform a creator can link — always offered as a
+// dashboard filter (Threads/TikTok are excluded as they have no inbox/DM API).
+const FILTERABLE_PLATFORMS: Platform[] = ['instagram', 'facebook', 'x', 'gmail', 'telegram']
+
 function fmt(n: number) {
   if (n >= 1000) return `$${(n / 1000).toFixed(1)}k`
   return `$${n}`
@@ -170,12 +174,14 @@ export function DashboardClient({ paidDeals, pipelineDeals, allDeals, allConvers
         </div>
       </div>
 
-      {/* Platform filter — only linked accounts are shown. Scopes the inbox and
-          message widgets below. */}
-      {linkedPlatforms.length > 0 && (
+      {/* Platform filter — all linkable messaging platforms, plus any others the
+          user has actually connected. Scopes the inbox and message widgets. */}
+      {(() => {
+        const options = Array.from(new Set<Platform>([...FILTERABLE_PLATFORMS, ...linkedPlatforms]))
+        return (
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="text-xs font-medium text-muted-foreground mr-1">Platform:</span>
-          {(['all', ...linkedPlatforms] as const).map(value => (
+          {(['all', ...options] as const).map(value => (
             <button
               key={value}
               onClick={() => setPlatform(value as Platform | 'all')}
@@ -189,7 +195,8 @@ export function DashboardClient({ paidDeals, pipelineDeals, allDeals, allConvers
             </button>
           ))}
         </div>
-      )}
+        )
+      })()}
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
