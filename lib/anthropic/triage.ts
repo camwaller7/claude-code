@@ -3,6 +3,10 @@ import { adminSupabase } from '@/lib/supabase/admin'
 import { getLLMSettings, logTokenUsage } from '@/lib/llm/settings'
 import { llmComplete } from '@/lib/llm/client'
 import { checkAIBudget } from '@/lib/llm/budget'
+import { multiUserEnabled } from '@/lib/auth/currentUser'
+import { getUserTier } from '@/lib/billing/subscription'
+import { tierConfig, HAIKU } from '@/lib/billing/tiers'
+import { getDailyInteractionCount } from '@/lib/billing/limits'
 import type { MessageCategory } from '@/types'
 
 interface TriageResult {
@@ -86,26 +90,46 @@ async function triageWithLLM(
   return { ...result, inputTokens, outputTokens }
 }
 
+const UNCATEGORIZED: TriageResult = { category: 'uncategorized', draftReply: '', priority: 0, reasoning: '' }
+
 export async function triageMessage(
   body: string,
   contactName: string,
-  platform: string
+  platform: string,
+  userId?: string | null
 ): Promise<TriageResult> {
   // Respect the monthly AI spend cap. Triage runs on every inbound message, so
   // if the budget is spent we skip the LLM call and leave the message
   // uncategorized rather than failing ingest or blowing past the limit.
   const budget = await checkAIBudget()
   if (budget.over) {
-    return { category: 'uncategorized', draftReply: '', priority: 0, reasoning: 'AI budget reached' }
+    return { ...UNCATEGORIZED, reasoning: 'AI budget reached' }
   }
 
-  const { provider, model } = await getLLMSettings()
+  // Multi-user: triage always runs on Haiku (cheapest) and counts toward the
+  // user's Starter daily interaction cap. Over the cap, skip it.
+  let provider = 'anthropic'
+  let model = HAIKU
+  if (multiUserEnabled() && userId) {
+    const tier = await getUserTier(userId)
+    const cfg = tierConfig(tier)
+    if (cfg.dailyInteractionCap != null) {
+      const used = await getDailyInteractionCount(userId)
+      if (used >= cfg.dailyInteractionCap) {
+        return { ...UNCATEGORIZED, reasoning: 'Daily AI limit reached' }
+      }
+    }
+  } else {
+    const settings = await getLLMSettings()
+    provider = settings.provider
+    model = settings.model
+  }
 
   const result = provider === 'anthropic'
     ? await triageWithAnthropic(model, body, contactName, platform)
     : await triageWithLLM(provider, model, body, contactName, platform)
 
-  await logTokenUsage(provider, model, 'triage', result.inputTokens, result.outputTokens).catch(console.error)
+  await logTokenUsage(provider, model, 'triage', result.inputTokens, result.outputTokens, userId).catch(console.error)
 
   return {
     category: result.category,

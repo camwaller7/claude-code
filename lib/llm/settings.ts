@@ -18,7 +18,8 @@ export async function logTokenUsage(
   model: string,
   feature: string,
   inputTokens: number,
-  outputTokens: number
+  outputTokens: number,
+  userId?: string | null
 ) {
   await adminSupabase.from('token_usage').insert({
     provider,
@@ -26,5 +27,6 @@ export async function logTokenUsage(
     feature,
     input_tokens: inputTokens,
     output_tokens: outputTokens,
+    ...(userId ? { user_id: userId } : {}),
   })
 }

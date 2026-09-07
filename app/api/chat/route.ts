@@ -8,7 +8,8 @@ import { auditLog } from '@/lib/audit/log'
 import { getLLMSettings, logTokenUsage } from '@/lib/llm/settings'
 import { llmComplete } from '@/lib/llm/client'
 import { checkAIBudget } from '@/lib/llm/budget'
-import { scopedUserId } from '@/lib/auth/currentUser'
+import { scopedUserId, multiUserEnabled } from '@/lib/auth/currentUser'
+import { resolveModelForUser } from '@/lib/billing/modelRouting'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -332,9 +333,11 @@ export async function POST(request: NextRequest) {
   if (unauthorized) return unauthorized
 
   let messages: Anthropic.MessageParam[]
+  let requestedModel: string | undefined
   try {
-    const body = await request.json() as { messages?: Anthropic.MessageParam[] }
+    const body = await request.json() as { messages?: Anthropic.MessageParam[]; model?: string }
     messages = sanitizeMessages(body.messages ?? [])
+    requestedModel = body.model
   } catch {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
@@ -379,6 +382,23 @@ export async function POST(request: NextRequest) {
 
   // The user whose data the assistant may read/write. Null in single-tenant.
   const chatUserId = await scopedUserId()
+
+  // Tier-based model routing. In multi-user mode the model comes from the user's
+  // plan + switcher choice (not the global settings row), and Starter's daily
+  // interaction cap can block the call outright.
+  let activeProvider = llm.provider
+  let activeModel = llm.model
+  if (multiUserEnabled() && chatUserId) {
+    const decision = await resolveModelForUser(chatUserId, requestedModel)
+    if (decision.blocked === 'daily_limit') {
+      return new Response(
+        "You've reached today's AI limit on the Starter plan. It resets tomorrow — or upgrade to Growth for unlimited Sonnet.",
+        { headers: { 'Content-Type': 'text/plain; charset=utf-8' } }
+      )
+    }
+    activeProvider = 'anthropic'
+    activeModel = decision.model
+  }
 
   // Monthly AI spend cap — refuse before spending when the budget is reached.
   const budget = await checkAIBudget()
@@ -447,7 +467,7 @@ export async function POST(request: NextRequest) {
           }
           break
         }
-        await logTokenUsage('anthropic', model, 'chat', inputTokens, outputTokens).catch(() => {})
+        await logTokenUsage('anthropic', model, 'chat', inputTokens, outputTokens, chatUserId).catch(() => {})
       }
 
       const runOtherProvider = async () => {
@@ -465,19 +485,19 @@ export async function POST(request: NextRequest) {
           .join('\n')
 
         const { text, inputTokens, outputTokens } = await llmComplete({
-          provider: llm.provider,
-          model: llm.model,
+          provider: activeProvider,
+          model: activeModel,
           system: `${system}\n\n${contextBlock}`,
           prompt: history,
           maxTokens: 1500,
         })
         push(text)
-        await logTokenUsage(llm.provider, llm.model, 'chat', inputTokens, outputTokens).catch(() => {})
+        await logTokenUsage(activeProvider, activeModel, 'chat', inputTokens, outputTokens, chatUserId).catch(() => {})
       }
 
       try {
-        if (llm.provider === 'anthropic' || !canUseSelected) {
-          await runAnthropicLoop(llm.provider === 'anthropic' ? llm.model : FALLBACK_ANTHROPIC_MODEL)
+        if (activeProvider === 'anthropic' || !canUseSelected) {
+          await runAnthropicLoop(activeProvider === 'anthropic' ? activeModel : FALLBACK_ANTHROPIC_MODEL)
         } else {
           try {
             await runOtherProvider()

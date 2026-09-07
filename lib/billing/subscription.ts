@@ -8,6 +8,8 @@ export interface Subscription {
   stripe_customer_id: string | null
   stripe_subscription_id: string | null
   plan: string
+  tier: string
+  billing_interval: string
   status: string
   current_period_end: string | null
 }
@@ -21,6 +23,14 @@ export async function getUserSubscription(userId: string): Promise<Subscription 
     .eq('user_id', userId)
     .maybeSingle()
   return (data as Subscription | null) ?? null
+}
+
+// The user's active tier, or 'starter' as the safe floor when there's no active
+// subscription. Callers gate access separately via hasActivePlan.
+export async function getUserTier(userId: string): Promise<string> {
+  const sub = await getUserSubscription(userId)
+  if (!sub) return 'starter'
+  return sub.tier ?? 'starter'
 }
 
 // Whether the user has an entitlement to the paid product right now. past_due is

@@ -19,6 +19,16 @@ function periodEndISO(sub: Stripe.Subscription): string | null {
   return ts ? new Date(ts * 1000).toISOString() : null
 }
 
+// Map the subscription's price to our tier + billing interval. Tier comes from
+// the price's metadata.tier (set on each Stripe Price: starter|growth|pro);
+// interval from the price's recurring.interval (month|year).
+function tierAndIntervalFromSub(sub: Stripe.Subscription): { tier: string; interval: string } {
+  const price = sub.items?.data?.[0]?.price
+  const tier = (price?.metadata?.tier as string | undefined) ?? 'starter'
+  const interval = price?.recurring?.interval ?? 'month'
+  return { tier, interval }
+}
+
 async function upsertFromSubscription(sub: Stripe.Subscription) {
   const userId = sub.metadata?.user_id
   const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer?.id ?? null
@@ -39,12 +49,15 @@ async function upsertFromSubscription(sub: Stripe.Subscription) {
   }
 
   const active = ['active', 'trialing', 'past_due'].includes(sub.status)
+  const { tier, interval } = tierAndIntervalFromSub(sub)
   await adminSupabase.from('subscriptions').upsert(
     {
       user_id: targetUserId,
       stripe_customer_id: customerId,
       stripe_subscription_id: sub.id,
-      plan: active ? 'creator' : 'free',
+      plan: active ? tier : 'free',
+      tier: active ? tier : 'starter',
+      billing_interval: interval,
       status: sub.status,
       current_period_end: periodEndISO(sub),
       updated_at: new Date().toISOString(),

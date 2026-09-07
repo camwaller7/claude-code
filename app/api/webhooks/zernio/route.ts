@@ -176,7 +176,7 @@ export async function POST(request: NextRequest) {
     )
 
     if (text) {
-      const triage = await triageMessage(text, name, platform)
+      const triage = await triageMessage(text, name, platform, userId)
       await adminSupabase
         .from('conversations')
         .update({ category: triage.category, priority: triage.priority })
