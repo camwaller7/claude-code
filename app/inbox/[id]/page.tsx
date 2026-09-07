@@ -43,10 +43,10 @@ export default async function ConversationPage({ params }: Props) {
           conversation column) so it's always the first thing on the screen. */}
       <Link
         href="/inbox"
-        className="inline-flex w-fit items-center gap-1.5 rounded-lg border bg-background px-3 py-1.5 text-sm font-medium text-foreground hover:bg-accent transition-colors"
+        aria-label="Back to inbox"
+        className="flex h-10 w-10 items-center justify-center rounded-full border bg-background text-foreground hover:bg-accent transition-colors"
       >
-        <ArrowLeft className="h-4 w-4" />
-        Back to inbox
+        <ArrowLeft className="h-5 w-5" />
       </Link>
       <div className="flex flex-col gap-4 max-w-3xl mx-auto w-full">
         <div className="flex items-start justify-between gap-4">
