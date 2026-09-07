@@ -3,6 +3,8 @@ export const dynamic = 'force-dynamic'
 import { createServerClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/auth/requireAuth'
 import { scopedUserId } from '@/lib/auth/currentUser'
+import { currentUserHasFeature } from '@/lib/billing/features'
+import { UpgradeNotice } from '@/components/billing/UpgradeNotice'
 import { Badge } from '@/components/ui/badge'
 import { NewDealDialog } from '@/components/deals/NewDealDialog'
 import { DealCard } from '@/components/deals/DealCard'
@@ -19,6 +21,9 @@ function statusVariant(status: DealStatus): 'default' | 'secondary' | 'destructi
 
 export default async function DealsPage() {
   await requireAuth()
+  if (!(await currentUserHasFeature('brandDeals'))) {
+    return <UpgradeNotice feature="Brand deals" />
+  }
   const supabase = await createServerClient()
   const uid = await scopedUserId()
   let dealsQuery = supabase.from('deals').select('*').order('created_at', { ascending: false })

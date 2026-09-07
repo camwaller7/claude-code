@@ -4,6 +4,8 @@ import { createServerClient } from '@/lib/supabase/server'
 import { adminSupabase } from '@/lib/supabase/admin'
 import { getStripe, billingEnabled } from '@/lib/stripe/client'
 import { getUserSubscription } from '@/lib/billing/subscription'
+import { priceIdFor, type Interval } from '@/lib/billing/prices'
+import type { Tier } from '@/lib/billing/tiers'
 
 // Start a Stripe Checkout session for the signed-in user's subscription. Returns
 // { url } for the browser to redirect to. Reuses the user's existing Stripe
@@ -20,6 +22,15 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  // Which tier + interval to buy (defaults keep the old single-price behaviour).
+  const body = await request.json().catch(() => ({})) as { tier?: Tier; interval?: Interval }
+  const tier: Tier = body.tier ?? 'growth'
+  const interval: Interval = body.interval === 'year' ? 'year' : 'month'
+  const priceId = priceIdFor(tier, interval)
+  if (!priceId) {
+    return NextResponse.json({ error: 'That plan isn’t available yet.' }, { status: 200 })
+  }
+
   const stripe = getStripe()
   const origin = new URL(request.url).origin
 
@@ -30,7 +41,7 @@ export async function POST(request: Request) {
 
   const session = await stripe.checkout.sessions.create({
     mode: 'subscription',
-    line_items: [{ price: process.env.STRIPE_PRICE_ID!, quantity: 1 }],
+    line_items: [{ price: priceId, quantity: 1 }],
     success_url: `${origin}/dashboard?checkout=success`,
     cancel_url: `${origin}/billing?checkout=cancelled`,
     // Bind the session to our user so the webhook can map customer -> user.

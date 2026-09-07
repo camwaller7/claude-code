@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { createServerClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/auth/requireAuth'
 import { scopedUserId } from '@/lib/auth/currentUser'
+import { currentUserHasFeature } from '@/lib/billing/features'
+import { UpgradeNotice } from '@/components/billing/UpgradeNotice'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { NewClientDialog } from '@/components/clients/NewClientDialog'
@@ -12,6 +14,9 @@ import type { CreatorClient } from '@/types'
 
 export default async function ClientsPage() {
   await requireAuth()
+  if (!(await currentUserHasFeature('clientPortal'))) {
+    return <UpgradeNotice feature="Client portal" />
+  }
   const supabase = await createServerClient()
   const uid = await scopedUserId()
   let clientsQuery = supabase
