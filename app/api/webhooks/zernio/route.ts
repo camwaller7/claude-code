@@ -3,6 +3,7 @@ import { createHmac, timingSafeEqual } from 'crypto'
 import { adminSupabase } from '@/lib/supabase/admin'
 import { triageMessage } from '@/lib/anthropic/triage'
 import { multiUserEnabled } from '@/lib/auth/currentUser'
+import { conflictTarget } from '@/lib/db/conflictTargets'
 import type { Platform } from '@/types'
 
 // Zernio inbound webhook. Zernio POSTs unified inbox events here (configured via
@@ -185,7 +186,7 @@ export async function POST(request: NextRequest) {
             ...owner,
             ...media,
           },
-          { onConflict: 'external_message_id', ignoreDuplicates: true }
+          { onConflict: conflictTarget.message(), ignoreDuplicates: true }
         )
       }
 
@@ -216,7 +217,7 @@ export async function POST(request: NextRequest) {
           last_message_at: now,
           ...owner,
         },
-        { onConflict: 'platform,external_thread_id' }
+        { onConflict: conflictTarget.conversation() }
       )
       .select()
       .single()
@@ -233,7 +234,7 @@ export async function POST(request: NextRequest) {
         ...owner,
         ...media,
       },
-      { onConflict: 'external_message_id', ignoreDuplicates: true }
+      { onConflict: conflictTarget.message(), ignoreDuplicates: true }
     )
 
     if (text) {

@@ -3,6 +3,7 @@ import { timingSafeEqual } from 'crypto'
 import { adminSupabase } from '@/lib/supabase/admin'
 import { triageMessage } from '@/lib/anthropic/triage'
 import { getTelegramToken, telegramWebhookSecret } from '@/lib/platform/telegram'
+import { conflictTarget } from '@/lib/db/conflictTargets'
 
 interface TelegramUser {
   id: number
@@ -45,6 +46,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid secret' }, { status: 401 })
   }
 
+  // Telegram is a single owner-only connection; stamp its rows with the owning
+  // user so they're scoped and satisfy the multi-user tenancy constraints.
+  const { data: tgConn } = await adminSupabase
+    .from('platform_connections')
+    .select('user_id')
+    .eq('platform', 'telegram')
+    .limit(1)
+    .maybeSingle()
+  const owner = tgConn?.user_id ? { user_id: tgConn.user_id as string } : {}
+
   try {
     const update = (await request.json()) as TelegramUpdate
     const msg = update.message
@@ -70,8 +81,9 @@ export async function POST(request: NextRequest) {
             contact_handle: handle,
             status: 'needs_reply',
             last_message_at: sentAt,
+            ...owner,
           },
-          { onConflict: 'platform,external_thread_id' }
+          { onConflict: conflictTarget.conversation() }
         )
         .select()
         .single()
@@ -82,6 +94,7 @@ export async function POST(request: NextRequest) {
           direction: 'inbound',
           body: msg.text,
           sent_at: sentAt,
+          ...owner,
         })
 
         const triage = await triageMessage(msg.text, handle, 'telegram')

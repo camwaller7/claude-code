@@ -8,6 +8,7 @@ import {
   type ZernioAnalyticsResponse,
 } from '@/lib/platform/zernio'
 import { multiUserEnabled } from '@/lib/auth/currentUser'
+import { conflictTarget } from '@/lib/db/conflictTargets'
 
 // ─── Zernio analytics sync ────────────────────────────────────────────────────
 // Pulls follower counts and per-post performance from Zernio's unified analytics
@@ -49,7 +50,7 @@ async function writeAnalytics(data: ZernioAnalyticsResponse, userId?: string | n
     if (!platform) continue
     const { error } = await adminSupabase.from('follower_snapshots').upsert(
       { platform, followers: a.followersCount, snapshot_date: today, ...owner },
-      { onConflict: 'platform,snapshot_date' }
+      { onConflict: conflictTarget.followerSnapshot() }
     )
     if (!error) followerSnapshots++
   }
@@ -78,7 +79,7 @@ async function writeAnalytics(data: ZernioAnalyticsResponse, userId?: string | n
         posted_at: post.publishedAt,
         ...owner,
       },
-      { onConflict: 'platform,external_post_id' }
+      { onConflict: conflictTarget.contentMetric() }
     )
     if (!error) metricsSynced++
   }
