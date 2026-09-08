@@ -139,6 +139,70 @@ export function sendZernioMessage(conversationId: string, accountId: string, mes
   )
 }
 
+// ─── Publishing ───────────────────────────────────────────────────────────────
+// Zernio's Posts API publishes to the same connected accounts we already use for
+// the inbox (POST /v1/posts). This is what powers the post portal — no separate
+// publishing provider or connection is needed. accountId is the Zernio account
+// _id we store in zernio_accounts.zernio_account_id.
+
+// Map our internal platform slugs to Zernio's platform names (Zernio calls X
+// "twitter"; the rest match). Used for the `platform` field of each target.
+const ZERNIO_PLATFORM_NAMES: Record<string, string> = {
+  x: 'twitter',
+  instagram: 'instagram',
+  facebook: 'facebook',
+  threads: 'threads',
+  tiktok: 'tiktok',
+  telegram: 'telegram',
+}
+export function toZernioPlatformName(p: string): string {
+  return ZERNIO_PLATFORM_NAMES[p] ?? p
+}
+
+export interface ZernioPublishTarget {
+  platform: string // Zernio platform name (see toZernioPlatformName)
+  accountId: string
+}
+
+// One entry per platform in Zernio's create-post response.
+export interface ZernioPostResult {
+  platform?: string
+  accountId?: string
+  status?: string
+  platformPostUrl?: string
+  postId?: string
+  id?: string
+  error?: string
+  success?: boolean
+}
+export interface ZernioCreatePostResponse {
+  id?: string
+  results?: ZernioPostResult[]
+  platforms?: ZernioPostResult[]
+}
+
+// Publish (or schedule) a post to one or more connected accounts. Pass
+// `scheduledFor` (ISO 8601) to schedule, or omit it to publish immediately.
+// Hashtags are NOT auto-appended by Zernio, so `content` must already include
+// them (the post portal merges caption + hashtags before calling this).
+export function publishToZernio(opts: {
+  content: string
+  targets: ZernioPublishTarget[]
+  mediaUrls?: string[]
+  scheduledFor?: string
+}) {
+  const body: Record<string, unknown> = {
+    content: opts.content,
+    platforms: opts.targets.map((t) => ({ platform: t.platform, accountId: t.accountId })),
+  }
+  if (opts.mediaUrls && opts.mediaUrls.length > 0) {
+    body.mediaItems = opts.mediaUrls.map((url) => ({ url }))
+  }
+  if (opts.scheduledFor) body.scheduledFor = opts.scheduledFor
+  else body.publishNow = true
+  return zernioFetch<ZernioCreatePostResponse>('/v1/posts', { method: 'POST', body })
+}
+
 // ─── Analytics ──────────────────────────────────────────────────────────────
 // Zernio's unified analytics endpoint returns published-post metrics plus the
 // connected accounts' follower counts, replacing the direct Meta Graph insights

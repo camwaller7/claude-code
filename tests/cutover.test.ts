@@ -1,5 +1,17 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { toAyrsharePlatform, fromAyrsharePlatform } from '@/lib/platform/ayrshare'
+import { toZernioPlatformName } from '@/lib/platform/zernio'
+
+describe('Zernio platform mapping (publishing)', () => {
+  it('maps X to Zernio\'s "twitter" and passes others through', () => {
+    expect(toZernioPlatformName('x')).toBe('twitter')
+    expect(toZernioPlatformName('instagram')).toBe('instagram')
+    expect(toZernioPlatformName('facebook')).toBe('facebook')
+    expect(toZernioPlatformName('threads')).toBe('threads')
+    expect(toZernioPlatformName('tiktok')).toBe('tiktok')
+    expect(toZernioPlatformName('telegram')).toBe('telegram')
+  })
+})
 
 describe('Ayrshare platform mapping', () => {
   it('maps our slugs to Ayrshare names (x -> twitter)', () => {

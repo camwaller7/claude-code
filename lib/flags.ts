@@ -2,11 +2,11 @@
 // available on both the server (page guards, API routes) and the client
 // (nav visibility) without a round-trip.
 
-// Master switch for the post portal. Defaults to OFF: publishing is hidden for
-// the trial (Zernio has no publish API and a multi-user publisher's base fee
-// isn't worth it at pilot volume). Set NEXT_PUBLIC_POST_PORTAL_ENABLED=true to
-// bring it back — when on, it's still gated to Growth/Pro (not Starter) via the
-// tier feature `postPortal`.
+// Master switch for the post portal. Defaults to ON: publishing runs through
+// Zernio's Posts API, reusing the same connected accounts as the inbox — no
+// separate provider, connection, or cost. It's still gated to Growth/Pro (never
+// Starter) via the tier feature `postPortal`. Set
+// NEXT_PUBLIC_POST_PORTAL_ENABLED=false to hide it entirely.
 export function postPortalEnabled(): boolean {
-  return process.env.NEXT_PUBLIC_POST_PORTAL_ENABLED === 'true'
+  return process.env.NEXT_PUBLIC_POST_PORTAL_ENABLED !== 'false'
 }

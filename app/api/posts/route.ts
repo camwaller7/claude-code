@@ -4,6 +4,7 @@ import { inngest } from '@/lib/inngest/client'
 import { requireApiAuth } from '@/lib/auth/requireApiAuth'
 import { scopedUserId, multiUserEnabled, currentUserIsOwner } from '@/lib/auth/currentUser'
 import { ayrshareEnabled } from '@/lib/platform/ayrshare'
+import { zernioEnabled } from '@/lib/platform/zernio'
 import { postPortalEnabled } from '@/lib/flags'
 
 export async function GET(request: NextRequest) {
@@ -55,12 +56,11 @@ export async function POST(request: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   // Who may auto-publish: the single-tenant pilot always; in multi-user, any
-  // user once Ayrshare is configured (they publish through their own linked
-  // Ayrshare profile), plus the owner via legacy direct tokens. When Ayrshare
-  // isn't set up, non-owner scheduled posts are saved but not queued (the UI
-  // shows a "connect publishing" prompt).
+  // user when a publisher is configured — Zernio (their own connected accounts)
+  // or Ayrshare — plus the owner via legacy direct tokens. When none is set up,
+  // non-owner scheduled posts are saved but not queued.
   const canAutoPublish =
-    !multiUserEnabled() || ayrshareEnabled() || (await currentUserIsOwner())
+    !multiUserEnabled() || zernioEnabled() || ayrshareEnabled() || (await currentUserIsOwner())
 
   if (scheduled_at && data && canAutoPublish) {
     // Never let a broken/unconfigured Inngest connection fail the save —

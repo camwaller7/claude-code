@@ -4,6 +4,12 @@ import { getValidToken, getValidMetaToken } from '@/lib/platform/tokens'
 import { META_GRAPH_VERSION, THREADS_GRAPH_VERSION } from '@/lib/platform/metaVersion'
 import { ayrshareEnabled, publishToAyrshare, fromAyrsharePlatform } from '@/lib/platform/ayrshare'
 import { getAyrshareProfileKey } from '@/lib/platform/ayrshareProfile'
+import {
+  zernioEnabled,
+  publishToZernio,
+  toZernioPlatformName,
+  resolveZernioAccountId,
+} from '@/lib/platform/zernio'
 import type { Platform } from '@/types'
 
 // ─── Inbox sync (runs every 15 min) ──────────────────────────────────────────
@@ -176,11 +182,69 @@ export const publishPost = inngest.createFunction(
       const scopeConn = <T,>(q: T): T =>
         ownerId ? ((q as unknown as { eq: (c: string, v: string) => T }).eq('user_id', ownerId)) : q
 
-      // Preferred path: publish through the owner's Ayrshare profile. This is
-      // how multi-user publishing works (each user links their own accounts via
-      // Ayrshare's SSO), and it covers Threads/TikTok. Falls through to the
-      // legacy direct-Meta/X path only when the user has no Ayrshare profile
-      // (e.g. the single-tenant owner who still uses direct tokens).
+      // Preferred path: publish through Zernio, using the same connected
+      // accounts as the inbox (no separate provider or connection, no extra
+      // cost). Resolve each target platform's Zernio account for the post owner;
+      // in the single-tenant pilot user_id is null so we resolve from the live
+      // account list. When Zernio is enabled this branch is terminal — it never
+      // falls through to Ayrshare/direct — so a not-connected platform reports a
+      // clear per-platform error instead of silently trying another path.
+      if (zernioEnabled()) {
+        const targets: { our: Platform; platform: string; accountId: string }[] = []
+        const missing: Platform[] = []
+        for (const p of platforms) {
+          let accountId: string | undefined
+          if (ownerId) {
+            const { data } = await adminSupabase
+              .from('zernio_accounts')
+              .select('zernio_account_id')
+              .eq('user_id', ownerId)
+              .eq('platform', p)
+              .limit(1)
+              .maybeSingle()
+            accountId = (data?.zernio_account_id as string | undefined) ?? undefined
+          } else {
+            accountId = await resolveZernioAccountId(p)
+          }
+          if (accountId) targets.push({ our: p, platform: toZernioPlatformName(p), accountId })
+          else missing.push(p)
+        }
+
+        const output: PublishResult[] = missing.map((platform) => ({
+          platform,
+          success: false,
+          error: 'No connected account for this platform — connect it in Settings.',
+        }))
+
+        if (targets.length > 0) {
+          const res = await publishToZernio({
+            content: fullCaption,
+            targets: targets.map((t) => ({ platform: t.platform, accountId: t.accountId })),
+            mediaUrls: mediaUrl ? [mediaUrl] : undefined,
+          })
+          if (!res.ok || !res.data) {
+            for (const t of targets) {
+              output.push({ platform: t.our, success: false, error: res.error ?? 'Zernio publish failed' })
+            }
+          } else {
+            // Map any per-platform errors Zernio returned (207 partial failure).
+            const errByPlatform = new Map<string, string>()
+            for (const r of res.data.results ?? res.data.platforms ?? []) {
+              if (r.error && r.platform) errByPlatform.set(r.platform, r.error)
+            }
+            for (const t of targets) {
+              const err = errByPlatform.get(t.platform)
+              if (err) output.push({ platform: t.our, success: false, error: err })
+              else output.push({ platform: t.our, success: true, postId: res.data.id })
+            }
+          }
+        }
+        return output
+      }
+
+      // Fallback path: publish through the owner's Ayrshare profile (only used
+      // when Zernio is not enabled). Falls through to the legacy direct-Meta/X
+      // path when the user has no Ayrshare profile.
       if (ayrshareEnabled() && ownerId) {
         const profileKey = await getAyrshareProfileKey(ownerId)
         if (profileKey) {

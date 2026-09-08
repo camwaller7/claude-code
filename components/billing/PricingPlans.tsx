@@ -36,6 +36,7 @@ const PLANS: Plan[] = [
     features: [
       'Everything in Starter',
       'X, Threads, TikTok & Gmail',
+      'Post scheduling & auto-publish',
       'Unlimited Quality AI (Sonnet)',
       'Brand-deal pipeline (CRM)',
       'Client portal + full dashboard',

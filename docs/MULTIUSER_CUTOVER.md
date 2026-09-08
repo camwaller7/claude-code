@@ -21,15 +21,22 @@ two groups:
   to the live pilot (they enforce `user_id`, which pilot writes don't yet set):
   - `029_user_id_not_null` → `030_composite_unique_keys` → `031_remove_owner_rls_bypass`.
 
-Publishing: Zernio has no publishing API, so the post portal publishes through
-**Ayrshare** (`lib/platform/ayrshare.ts`) — each user links their own accounts
-via Ayrshare's hosted SSO and posts run under their `profileKey`. The legacy
-direct-Meta/X path remains as the owner's fallback and is now scoped to the
-post's `user_id`. Direct-OAuth connect/callbacks are owner-only in multi-user and
-stamp `user_id`; their legacy DM backfill was removed (Zernio owns messaging).
+Publishing: the post portal publishes through **Zernio's Posts API**
+(`publishToZernio` in `lib/platform/zernio.ts`), reusing the same connected
+accounts as the inbox (`zernio_accounts`) — no separate provider, connection, or
+cost, and it covers all 16 Zernio platforms. The inngest job resolves each
+target platform's Zernio account for the post owner and calls `POST /v1/posts`
+with `publishNow` (or `scheduledFor`). When Zernio is enabled this path is
+terminal; a not-connected platform reports a clear per-platform error.
 
-Required env for Ayrshare: `AYRSHARE_API_KEY` (Business plan), plus
-`AYRSHARE_PRIVATE_KEY` (PEM) and `AYRSHARE_DOMAIN` for the hosted SSO link.
+Fallbacks (only when `ZERNIO_ENABLED` is off): **Ayrshare**
+(`lib/platform/ayrshare.ts`, behind `AYRSHARE_API_KEY` + `AYRSHARE_PRIVATE_KEY` +
+`AYRSHARE_DOMAIN`) then the legacy direct-Meta/X path (owner-only, scoped to the
+post's `user_id`). Direct-OAuth connect/callbacks are owner-only in multi-user
+and stamp `user_id`; their legacy DM backfill was removed (Zernio owns messaging).
+
+The post portal is gated by `NEXT_PUBLIC_POST_PORTAL_ENABLED` (default on) and the
+`postPortal` tier feature (Growth/Pro only — never Starter).
 
 ## Gating decision — legacy Meta/Gmail/X path (audit H7, M9, M12)
 
