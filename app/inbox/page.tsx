@@ -12,23 +12,27 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import type { Conversation } from '@/types'
 
 interface Props {
-  searchParams: Promise<{ platform?: string; category?: string; q?: string; status?: string }>
+  searchParams: Promise<{ platform?: string; category?: string; q?: string; status?: string; important?: string }>
 }
 
 export default async function InboxPage({ searchParams }: Props) {
-  const { platform, category, q, status } = await searchParams
+  const { platform, category, q, status, important } = await searchParams
   await requireAuth()
   const supabase = await createServerClient()
 
   const uid = await scopedUserId()
+  // Important conversations always sort to the top, then by recency — so
+  // reply-worthy DMs don't get lost among fan/spam messages.
   let query = supabase
     .from('conversations')
     .select('*')
+    .order('is_important', { ascending: false })
     .order('last_message_at', { ascending: false })
 
   if (uid) query = query.eq('user_id', uid)
   if (platform) query = query.eq('platform', platform)
   if (category) query = query.eq('category', category)
+  if (important === '1') query = query.eq('is_important', true)
   const effectiveStatus = status ?? 'needs_reply'
   if (effectiveStatus !== 'all') query = query.eq('status', effectiveStatus)
   if (q) {

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Search, X } from 'lucide-react'
+import { Search, X, Star } from 'lucide-react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import type { Platform, MessageCategory } from '@/types'
 
@@ -31,6 +31,7 @@ export function InboxFilters() {
   const platform = searchParams.get('platform') ?? 'all'
   const category = searchParams.get('category') ?? 'all'
   const status = searchParams.get('status') ?? 'needs_reply'
+  const important = searchParams.get('important') === '1'
   const q = searchParams.get('q') ?? ''
   const [search, setSearch] = useState(q)
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -73,7 +74,7 @@ export function InboxFilters() {
           </button>
         )}
       </div>
-      {/* Needs-reply quick filter */}
+      {/* Quick filters */}
       <div className="flex flex-wrap gap-1.5">
         <button
           onClick={() => setFilter('status', status === 'needs_reply' ? 'all' : 'needs_reply')}
@@ -84,6 +85,17 @@ export function InboxFilters() {
           }`}
         >
           Needs reply
+        </button>
+        <button
+          onClick={() => setFilter('important', important ? 'all' : '1')}
+          className={`flex items-center gap-1 rounded-full border px-3 py-0.5 text-xs font-medium transition-colors ${
+            important
+              ? 'border-amber-400 bg-amber-400 text-black'
+              : 'border-input bg-background text-foreground hover:bg-accent'
+          }`}
+        >
+          <Star className={`h-3 w-3 ${important ? 'fill-black' : ''}`} />
+          Important
         </button>
       </div>
       <div className="flex flex-wrap gap-1.5">

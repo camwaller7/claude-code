@@ -17,9 +17,13 @@ export async function PATCH(
   if (unauthorized) return unauthorized
 
   const { id } = await params
-  const body = (await request.json().catch(() => ({}))) as { category?: string; status?: string }
+  const body = (await request.json().catch(() => ({}))) as {
+    category?: string
+    status?: string
+    is_important?: boolean
+  }
 
-  const update: Record<string, string> = {}
+  const update: Record<string, string | boolean> = {}
   if (body.category !== undefined) {
     if (!CATEGORIES.includes(body.category as MessageCategory)) {
       return NextResponse.json({ error: 'Invalid category' }, { status: 400 })
@@ -31,6 +35,12 @@ export async function PATCH(
       return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
     }
     update.status = body.status
+  }
+  if (body.is_important !== undefined) {
+    if (typeof body.is_important !== 'boolean') {
+      return NextResponse.json({ error: 'Invalid is_important' }, { status: 400 })
+    }
+    update.is_important = body.is_important
   }
   if (Object.keys(update).length === 0) {
     return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })

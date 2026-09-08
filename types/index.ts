@@ -29,6 +29,7 @@ export interface Conversation {
   category: MessageCategory
   status: MessageStatus
   priority: number
+  is_important: boolean
   last_message_at: string
   created_at: string
 }

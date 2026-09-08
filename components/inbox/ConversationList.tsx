@@ -2,8 +2,9 @@
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { Star } from 'lucide-react'
 import type { Conversation, MessageCategory } from '@/types'
-import { relativeTime } from '@/lib/utils'
+import { relativeTime, cn } from '@/lib/utils'
 
 function platformLabel(platform: string): string {
   const map: Record<string, string> = {
@@ -49,6 +50,20 @@ export function ConversationList({ conversations }: Props) {
     }
   }
 
+  async function toggleImportant(id: string, next: boolean) {
+    setBusyId(id)
+    try {
+      const res = await fetch(`/api/conversations/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_important: next }),
+      })
+      if (res.ok) router.refresh()
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   async function deleteConversation(id: string, name: string) {
     const ok = window.confirm(
       `Delete the chat with ${name}? This removes the conversation and its messages from Corvelle. It does not delete anything on the original platform.`
@@ -69,7 +84,10 @@ export function ConversationList({ conversations }: Props) {
         <div
           key={conv.id}
           onClick={() => router.push(`/inbox/${conv.id}`)}
-          className="flex cursor-pointer items-center justify-between rounded-lg border bg-card p-4 hover:bg-accent transition-colors"
+          className={cn(
+            'flex cursor-pointer items-center justify-between rounded-lg border bg-card p-4 hover:bg-accent transition-colors',
+            conv.is_important && 'border-l-4 border-l-amber-400'
+          )}
         >
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <span className="inline-flex h-8 w-10 shrink-0 items-center justify-center rounded bg-muted text-xs font-bold">
@@ -87,6 +105,21 @@ export function ConversationList({ conversations }: Props) {
           </div>
           {/* Stop propagation so using these controls doesn't open the chat. */}
           <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              aria-label={conv.is_important ? 'Unmark important' : 'Mark important'}
+              title={conv.is_important ? 'Unmark important' : 'Mark important'}
+              disabled={busyId === conv.id}
+              onClick={() => toggleImportant(conv.id, !conv.is_important)}
+              className={cn(
+                'rounded-md p-1 transition-colors disabled:opacity-50',
+                conv.is_important
+                  ? 'text-amber-500 hover:text-amber-600'
+                  : 'text-muted-foreground hover:text-amber-500'
+              )}
+            >
+              <Star className={cn('h-4 w-4', conv.is_important && 'fill-amber-400')} />
+            </button>
             <select
               aria-label="Category"
               title="Categorise this chat"
