@@ -1,10 +1,32 @@
 import { adminSupabase } from '@/lib/supabase/admin'
 import {
   getZernioAnalytics,
+  getAccountReach,
   type ZernioAnalyticsPost,
   type ZernioAnalyticsResponse,
 } from '@/lib/platform/zernio'
 import { conflictTarget } from '@/lib/db/conflictTargets'
+
+// Zernio reports X as "twitter"; the rest of the app uses "x".
+function normalizeReachPlatform(p?: string): string {
+  return p === 'twitter' ? 'x' : (p ?? '')
+}
+
+// Fetch and store the 7-day reach for one account. owner_key is the user id
+// (multi-user) or 'pilot' (single-tenant). Best-effort: a null reach (metric
+// unavailable / no add-on) is skipped so we don't overwrite a good value with 0.
+async function storeReach(ownerKey: string, platform: string, accountId: string) {
+  const since = new Date(Date.now() - 7 * 86400_000).toISOString().slice(0, 10)
+  const until = new Date().toISOString().slice(0, 10)
+  const reach = await getAccountReach(platform, accountId, since, until)
+  if (reach == null) return
+  await adminSupabase
+    .from('account_reach')
+    .upsert(
+      { owner_key: ownerKey, platform, reach_7d: reach, updated_at: new Date().toISOString() },
+      { onConflict: 'owner_key,platform' }
+    )
+}
 
 // Zernio analytics → follower_snapshots + content_metrics. Shared by the
 // scheduled/owner sync route and the debounced per-user login sync.
@@ -83,6 +105,11 @@ export async function syncSingleTenant() {
     return { skipped: true as const, reason: res.error ?? 'zernio_analytics_failed' }
   }
   const written = await writeAnalytics(res.data)
+  // Refresh 7-day reach per connected account.
+  for (const a of res.data.accounts ?? []) {
+    const platform = normalizeReachPlatform(a.platform)
+    if (a._id && platform) await storeReach('pilot', platform, a._id)
+  }
   return { ...written, hasAnalyticsAccess: res.data.hasAnalyticsAccess }
 }
 
@@ -91,7 +118,7 @@ export async function syncSingleTenant() {
 export async function syncAllMultiUser() {
   const { data: accounts } = await adminSupabase
     .from('zernio_accounts')
-    .select('user_id, zernio_account_id')
+    .select('user_id, zernio_account_id, platform')
   let followerSnapshots = 0
   let metricsSynced = 0
   let accountsSynced = 0
@@ -102,6 +129,7 @@ export async function syncAllMultiUser() {
     followerSnapshots += written.followerSnapshots
     metricsSynced += written.metricsSynced
     accountsSynced++
+    await storeReach(acct.user_id as string, acct.platform as string, acct.zernio_account_id as string)
   }
   return { followerSnapshots, metricsSynced, accountsSynced }
 }
@@ -111,7 +139,7 @@ export async function syncAllMultiUser() {
 export async function syncUserAccounts(userId: string) {
   const { data: accounts } = await adminSupabase
     .from('zernio_accounts')
-    .select('zernio_account_id')
+    .select('zernio_account_id, platform')
     .eq('user_id', userId)
   let followerSnapshots = 0
   let metricsSynced = 0
@@ -123,6 +151,7 @@ export async function syncUserAccounts(userId: string) {
     followerSnapshots += written.followerSnapshots
     metricsSynced += written.metricsSynced
     accountsSynced++
+    await storeReach(userId, acct.platform as string, acct.zernio_account_id as string)
   }
   return { followerSnapshots, metricsSynced, accountsSynced }
 }

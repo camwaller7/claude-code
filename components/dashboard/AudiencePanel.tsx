@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
-import { TrendingUp, TrendingDown, Eye, Heart, Trophy, Clock, Globe } from 'lucide-react'
+import { TrendingUp, TrendingDown, Eye, Users, Trophy, Clock, Globe } from 'lucide-react'
 import type { ContentAnalytics, PlatformAnalytics, PostPerformance } from '@/lib/analytics/stats'
 
 function fmt(n: number) {
@@ -22,6 +22,7 @@ interface ViewModel {
   trend: { day: string; followers: number }[]
   views: number
   interactions: number
+  reach7d: number
   postsPublished: number
   avgEngagement: number
   bestHour: number | null
@@ -43,6 +44,7 @@ function totalViewModel(a: ContentAnalytics): ViewModel {
     trend: a.followers.trend_30d.map(p => ({ day: toDay(p.date), followers: p.total })),
     views: a.last30days.views,
     interactions: a.last30days.interactions,
+    reach7d: a.reach7d,
     postsPublished: a.last30days.posts_published,
     avgEngagement: a.last30days.avg_engagement_rate,
     bestHour: a.breakdown.best_posting_hours[0]?.hour ?? null,
@@ -68,6 +70,7 @@ function zeroViewModel(platform: string): ViewModel {
     interactions: 0,
     postsPublished: 0,
     avgEngagement: 0,
+    reach7d: 0,
     bestHour: null,
     topPost: null,
     byMediaType: {},
@@ -83,6 +86,7 @@ function platformViewModel(p: PlatformAnalytics): ViewModel {
     trend: p.followers.trend_30d.map(s => ({ day: toDay(s.date), followers: s.followers })),
     views: p.last30days.views,
     interactions: p.last30days.interactions,
+    reach7d: p.reach7d,
     postsPublished: p.last30days.posts_published,
     avgEngagement: p.last30days.avg_engagement_rate,
     bestHour: p.best_posting_hours[0]?.hour ?? null,
@@ -116,11 +120,11 @@ function MetricTiles({ vm }: { vm: ViewModel }) {
       </div>
       <div className="rounded-2xl border bg-card card-elevated p-3 flex flex-col gap-1">
         <div className="flex items-center justify-between">
-          <p className="text-xs text-muted-foreground">Interactions</p>
-          <Heart className="h-3.5 w-3.5 text-muted-foreground" />
+          <p className="text-xs text-muted-foreground">Reach</p>
+          <Users className="h-3.5 w-3.5 text-muted-foreground" />
         </div>
-        <p className="text-xl font-bold">{fmt(vm.interactions)}</p>
-        <p className="text-xs text-muted-foreground">{vm.avgEngagement}% avg engagement</p>
+        <p className="text-xl font-bold">{fmt(vm.reach7d)}</p>
+        <p className="text-xs text-muted-foreground">accounts reached · 7d</p>
       </div>
       <div className="rounded-2xl border bg-card card-elevated p-3 flex flex-col gap-1">
         <div className="flex items-center justify-between">

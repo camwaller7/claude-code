@@ -45,6 +45,7 @@ export interface PlatformAnalytics {
     posts_published: number
     avg_engagement_rate: number
   }
+  reach7d: number
   top_post: PostPerformance | null
   by_media_type: Record<string, { posts: number; avg_views: number; avg_engagement_rate: number }>
   best_posting_hours: { hour: number; avg_views: number }[]
@@ -70,6 +71,9 @@ export interface ContentAnalytics {
     posts_published: number
     avg_engagement_rate: number
   }
+  // Reach (unique people who saw the account/content) over the last 7 days,
+  // account-level. 0 when the platform metric isn't available.
+  reach7d: number
   top_post: PostPerformance | null
   worst_post: PostPerformance | null
   posts: PostPerformance[]
@@ -165,6 +169,15 @@ export async function getContentAnalytics(userId?: string | null): Promise<Conte
   }
   const [{ data: snaps }, { data: metrics }] = await Promise.all([snapsQuery, metricsQuery])
 
+  // ---- account reach (7-day, per platform) ----
+  const { data: reachRows } = await adminSupabase
+    .from('account_reach')
+    .select('platform, reach_7d')
+    .eq('owner_key', userId ?? 'pilot')
+  const reachByPlatform: Record<string, number> = {}
+  for (const r of reachRows ?? []) reachByPlatform[r.platform as string] = (r.reach_7d as number) ?? 0
+  const reachTotal = Object.values(reachByPlatform).reduce((a, b) => a + b, 0)
+
   // ---- follower trend (all platforms combined) ----
   const byDate = new Map<string, Record<string, number>>()
   for (const s of snaps ?? []) {
@@ -243,6 +256,7 @@ export async function getContentAnalytics(userId?: string | null): Promise<Conte
       followers: platformFollowerTrend(pSnaps),
       last7days: summarisePosts(pRecent),
       last30days: summarisePosts(pPosts),
+      reach7d: reachByPlatform[name] ?? 0,
       top_post: pScored[0] ?? null,
       by_media_type: mediaTypeBreakdown(pPosts),
       best_posting_hours: bestHours(pPosts),
@@ -273,6 +287,7 @@ export async function getContentAnalytics(userId?: string | null): Promise<Conte
         ? +(recent30.reduce((s, p) => s + p.engagement_rate, 0) / recent30.length).toFixed(2)
         : 0,
     },
+    reach7d: reachTotal,
     top_post: scored[0] ?? null,
     worst_post: scored.length > 1 ? scored[scored.length - 1] : null,
     posts: posts.slice(0, 50),

@@ -205,6 +205,44 @@ export function publishToZernio(opts: {
   return zernioFetch<ZernioCreatePostResponse>('/v1/posts', { method: 'POST', body })
 }
 
+// ─── Account reach (account-level insights) ───────────────────────────────────
+// Reach = how many unique people saw the account/its content over a window.
+// Instagram exposes a true `reach` metric; Facebook's closest post-Nov-2025
+// metric is `page_media_view` (Meta removed unique Page reach). Both come from
+// the per-platform account-insights endpoints. Requires the account's Zernio
+// analytics add-on; returns null (not 0) when unavailable so the UI can tell
+// "no data" from "zero reach".
+
+interface ZernioAccountInsights {
+  metrics?: Record<string, { total?: number }>
+}
+
+// Fetch total reach for one account over [since, until] (YYYY-MM-DD). Returns
+// null for platforms we don't map or when the metric isn't available.
+export async function getAccountReach(
+  platform: string,
+  accountId: string,
+  since: string,
+  until: string
+): Promise<number | null> {
+  let path: string
+  let metric: string
+  if (platform === 'instagram') {
+    path = '/v1/analytics/instagram/account-insights'
+    metric = 'reach'
+  } else if (platform === 'facebook') {
+    path = '/v1/analytics/facebook/page-insights'
+    metric = 'page_media_view'
+  } else {
+    return null
+  }
+  const q = new URLSearchParams({ accountId, metrics: metric, metricType: 'total_value', since, until })
+  const res = await zernioFetch<ZernioAccountInsights>(`${path}?${q.toString()}`)
+  if (!res.ok || !res.data) return null
+  const total = res.data.metrics?.[metric]?.total
+  return typeof total === 'number' ? total : null
+}
+
 // ─── Analytics ──────────────────────────────────────────────────────────────
 // Zernio's unified analytics endpoint returns published-post metrics plus the
 // connected accounts' follower counts, replacing the direct Meta Graph insights
