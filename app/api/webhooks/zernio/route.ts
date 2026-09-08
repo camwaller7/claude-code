@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { adminSupabase } from '@/lib/supabase/admin'
-import { triageMessage } from '@/lib/anthropic/triage'
+import { triageMessage, importantFromTriage } from '@/lib/anthropic/triage'
 import { multiUserEnabled } from '@/lib/auth/currentUser'
 import { conflictTarget } from '@/lib/db/conflictTargets'
 import type { Platform } from '@/types'
@@ -241,7 +241,12 @@ export async function POST(request: NextRequest) {
       const triage = await triageMessage(text, name, platform, userId)
       await adminSupabase
         .from('conversations')
-        .update({ category: triage.category, priority: triage.priority })
+        .update({
+          category: triage.category,
+          priority: triage.priority,
+          // Auto-star real business / urgent DMs; never auto-unstar.
+          ...(importantFromTriage(triage) ? { is_important: true } : {}),
+        })
         .eq('id', conv.id)
     }
   } catch (err) {

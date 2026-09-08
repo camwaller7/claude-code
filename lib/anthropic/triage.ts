@@ -147,12 +147,25 @@ export async function triageMessage(
   }
 }
 
+// Whether triage thinks a message is important enough to auto-star: real
+// business (brand deals, existing clients) or anything the model flagged as
+// urgent/high-priority. Fan/spam/personal are never auto-starred.
+export function importantFromTriage(result: { category: MessageCategory; priority: number }): boolean {
+  return result.category === 'brand_deal' || result.category === 'client' || result.priority >= 7
+}
+
 export async function triageAndSave(conversationId: string, messageBody: string, contactName: string, platform: string) {
   const result = await triageMessage(messageBody, contactName, platform)
 
   await adminSupabase
     .from('conversations')
-    .update({ category: result.category, priority: result.priority })
+    .update({
+      category: result.category,
+      priority: result.priority,
+      // Auto-star important messages; never auto-unstar (respects the user's
+      // manual choices), so we only set is_important when true.
+      ...(importantFromTriage(result) ? { is_important: true } : {}),
+    })
     .eq('id', conversationId)
 
   await adminSupabase
