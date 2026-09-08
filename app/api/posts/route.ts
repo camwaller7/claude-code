@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerSupabase } from '@/lib/supabase/server'
 import { inngest } from '@/lib/inngest/client'
 import { requireApiAuth } from '@/lib/auth/requireApiAuth'
-import { scopedUserId } from '@/lib/auth/currentUser'
+import { scopedUserId, multiUserEnabled, currentUserIsOwner } from '@/lib/auth/currentUser'
+import { ayrshareEnabled } from '@/lib/platform/ayrshare'
 
 export async function GET(request: NextRequest) {
   const unauthorized = await requireApiAuth(request)
@@ -50,7 +51,15 @@ export async function POST(request: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  if (scheduled_at && data) {
+  // Who may auto-publish: the single-tenant pilot always; in multi-user, any
+  // user once Ayrshare is configured (they publish through their own linked
+  // Ayrshare profile), plus the owner via legacy direct tokens. When Ayrshare
+  // isn't set up, non-owner scheduled posts are saved but not queued (the UI
+  // shows a "connect publishing" prompt).
+  const canAutoPublish =
+    !multiUserEnabled() || ayrshareEnabled() || (await currentUserIsOwner())
+
+  if (scheduled_at && data && canAutoPublish) {
     // Never let a broken/unconfigured Inngest connection fail the save —
     // the post is already in the DB and correctly marked "scheduled";
     // the background publish step is best-effort on top of that.

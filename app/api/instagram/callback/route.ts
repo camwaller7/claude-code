@@ -3,9 +3,8 @@ import { cookies } from 'next/headers'
 import { adminSupabase } from '@/lib/supabase/admin'
 import { auditLog } from '@/lib/audit/log'
 import { requireApiAuth } from '@/lib/auth/requireApiAuth'
+import { getCurrentUserId } from '@/lib/auth/currentUser'
 import { encryptToken } from '@/lib/crypto/tokenCipher'
-import { META_GRAPH_VERSION } from '@/lib/platform/metaVersion'
-import { triageMessage } from '@/lib/anthropic/triage'
 import { inngest } from '@/lib/inngest/client'
 
 export async function GET(request: NextRequest) {
@@ -90,6 +89,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: meData.error_message ?? 'Failed to fetch Instagram account' }, { status: 400 })
   }
 
+  const ownerId = await getCurrentUserId()
   await adminSupabase.from('platform_connections').upsert(
     {
       platform: 'instagram',
@@ -98,89 +98,17 @@ export async function GET(request: NextRequest) {
       refresh_token: null,
       expires_at: expiresAt,
       connected_at: new Date().toISOString(),
+      ...(ownerId ? { user_id: ownerId } : {}),
     },
     { onConflict: 'platform,account_id' }
   )
 
-  // Without this, Meta never sends DM/comment events to our webhook — the
-  // account has to explicitly subscribe the app to receive them.
-  const subscribeRes = await fetch(
-    `https://graph.instagram.com/${META_GRAPH_VERSION}/${meData.user_id}/subscribed_apps?subscribed_fields=messages&access_token=${accessToken}`,
-    { method: 'POST' }
-  )
-  const subscribeData = await subscribeRes.json().catch(() => ({})) as { success?: boolean; error?: { message: string } }
-  if (!subscribeRes.ok || subscribeData.error) {
-    console.error('[instagram/callback] webhook subscription failed:', subscribeData.error?.message)
-  }
-
-
-      // Backfill existing conversations so unread DMs from before the connection show up immediately, instead of only capturing messages from now on.
-      try {
-              const convRes = await fetch(
-                        `https://graph.instagram.com/${META_GRAPH_VERSION}/${meData.user_id}/conversations?platform=instagram&fields=participants&access_token=${accessToken}`
-                      )
-              const convData = await convRes.json() as {
-                        data?: { id: string }[]
-                        error?: { message: string }
-              }
-
-              for (const thread of (convData.data ?? []).slice(0, 25)) {
-                        const msgsRes = await fetch(
-                                    `https://graph.instagram.com/${META_GRAPH_VERSION}/${thread.id}?fields=messages.limit(20){id,from{id,username},message,created_time}&access_token=${accessToken}`
-                                  )
-                        const msgsData = await msgsRes.json() as {
-                                    messages?: { data?: { id: string; from: { id: string; username?: string }; message?: string; created_time: string }[] }
-                                    error?: { message: string }
-                        }
-
-                        const msgs = msgsData.messages?.data ?? []
-                        if (msgs.length === 0) continue
-
-                        const otherMsg = msgs.find((m) => m.from.id !== meData.user_id)
-                        const otherParticipant = otherMsg?.from.id ?? thread.id
-                        const otherUsername = otherMsg?.from.username
-
-                        const { data: conv } = await adminSupabase.from('conversations').upsert(
-                          {
-                                        platform: 'instagram',
-                                        external_thread_id: otherParticipant,
-                                        contact_name: otherUsername ?? otherParticipant,
-                                        contact_handle: otherUsername ? `@${otherUsername}` : otherParticipant,
-                                        status: 'needs_reply',
-                                        last_message_at: msgs[0]?.created_time ?? new Date().toISOString(),
-                          },
-                          { onConflict: 'platform,external_thread_id' }
-                                  ).select().single()
-
-                        if (!conv) continue
-
-                        let lastInboundText: string | null = null
-                        for (const m of msgs) {
-                                    if (!m.message) continue
-                                    await adminSupabase.from('messages').upsert(
-                                      {
-                                                      conversation_id: conv.id,
-                                                      direction: m.from.id === meData.user_id ? 'outbound' : 'inbound',
-                                                      body: m.message,
-                                                      external_message_id: m.id,
-                                                      sent_at: m.created_time,
-                                      },
-                                      { onConflict: 'external_message_id', ignoreDuplicates: true }
-                                                )
-                                    if (m.from.id !== meData.user_id) lastInboundText = m.message
-                        }
-
-                        if (lastInboundText) {
-                                    const triage = await triageMessage(lastInboundText, otherParticipant, 'instagram')
-                                    await adminSupabase
-                                      .from('conversations')
-                                      .update({ category: triage.category, priority: triage.priority })
-                                      .eq('id', conv.id)
-                        }
-              }
-      } catch (err) {
-              console.error('[instagram/callback] conversation backfill failed:', err)
-      }
+  // NOTE: Instagram/Facebook DMs are synced through Zernio (the messaging
+  // provider), not this direct-Meta OAuth. This connection exists only to hold
+  // the publishing token used by the post portal. We therefore no longer
+  // subscribe the app to Meta's messaging webhook or backfill conversations
+  // here — doing so created rows that duplicated Zernio's inbox and were not
+  // scoped to an owning user.
 
   // Kick off an initial analytics sync so the dashboard has real follower/post
   // stats right after connecting, instead of waiting for the daily cron.

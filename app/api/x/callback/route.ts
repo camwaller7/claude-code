@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { adminSupabase } from '@/lib/supabase/admin'
 import { auditLog } from '@/lib/audit/log'
 import { requireApiAuth } from '@/lib/auth/requireApiAuth'
+import { getCurrentUserId } from '@/lib/auth/currentUser'
 import { encryptToken } from '@/lib/crypto/tokenCipher'
 
 export async function GET(request: NextRequest) {
@@ -76,6 +77,7 @@ export async function GET(request: NextRequest) {
     ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString()
     : null
 
+  const ownerId = await getCurrentUserId()
   await adminSupabase.from('platform_connections').upsert(
     {
       platform: 'x',
@@ -84,6 +86,7 @@ export async function GET(request: NextRequest) {
       refresh_token: tokenData.refresh_token ? encryptToken(tokenData.refresh_token) : null,
       expires_at: expiresAt,
       connected_at: new Date().toISOString(),
+      ...(ownerId ? { user_id: ownerId } : {}),
     },
     { onConflict: 'platform,account_id' }
   )

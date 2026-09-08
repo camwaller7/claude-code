@@ -3,9 +3,9 @@ import { cookies } from 'next/headers'
 import { adminSupabase } from '@/lib/supabase/admin'
 import { auditLog } from '@/lib/audit/log'
 import { requireApiAuth } from '@/lib/auth/requireApiAuth'
+import { getCurrentUserId } from '@/lib/auth/currentUser'
 import { encryptToken } from '@/lib/crypto/tokenCipher'
 import { META_GRAPH_VERSION } from '@/lib/platform/metaVersion'
-import { triageMessage } from '@/lib/anthropic/triage'
 
 export async function GET(request: NextRequest) {
   const unauthorized = await requireApiAuth(request)
@@ -88,6 +88,9 @@ export async function GET(request: NextRequest) {
   }
 
   const connectedAt = new Date().toISOString()
+  // Owner-only route (gated in requireApiAuth for multi-user); stamp the owning
+  // user so the row is scoped and passes the NOT-NULL tenancy constraint.
+  const ownerId = await getCurrentUserId()
 
   // The user access token above can't send/receive Page messages or publish
   // to a Page — only a Page's own access token can. Look up the Pages this
@@ -121,91 +124,17 @@ export async function GET(request: NextRequest) {
         refresh_token: null,
         expires_at: null, // Page tokens from a long-lived User token don't expire.
         connected_at: connectedAt,
+        ...(ownerId ? { user_id: ownerId } : {}),
       },
       { onConflict: 'platform,account_id' }
     )
-
-    // Without this, Meta never sends message events to our webhook — the
-    // Page has to explicitly subscribe the app to receive them.
-    const subscribeRes = await fetch(
-      `https://graph.facebook.com/${META_GRAPH_VERSION}/${page.id}/subscribed_apps?subscribed_fields=messages,messaging_postbacks&access_token=${page.access_token}`,
-      { method: 'POST' }
-    )
-    const subscribeData = await subscribeRes.json().catch(() => ({})) as { success?: boolean; error?: { message: string } }
-    if (!subscribeRes.ok || subscribeData.error) {
-      console.error(`[meta/callback] webhook subscription failed for page ${page.id}:`, subscribeData.error?.message)
-    }
-
-
-        // Backfill existing conversations so unread messages from before the connection show up immediately, instead of only capturing new ones.
-        try {
-                const convRes = await fetch(
-                          `https://graph.facebook.com/${META_GRAPH_VERSION}/${page.id}/conversations?fields=participants&access_token=${page.access_token}`
-                        )
-                const convData = await convRes.json() as {
-                          data?: { id: string; participants?: { data?: { id: string; name?: string }[] } }[]
-                          error?: { message: string }
-                }
-
-                for (const thread of (convData.data ?? []).slice(0, 25)) {
-                          const msgsRes = await fetch(
-                                      `https://graph.facebook.com/${META_GRAPH_VERSION}/${thread.id}?fields=messages.limit(20){id,from,message,created_time}&access_token=${page.access_token}`
-                                    )
-                          const msgsData = await msgsRes.json() as {
-                                      messages?: { data?: { id: string; from: { id: string }; message?: string; created_time: string }[] }
-                                      error?: { message: string }
-                          }
-
-                          const msgs = msgsData.messages?.data ?? []
-                          if (msgs.length === 0) continue
-
-                          const otherParticipant = msgs.find((m) => m.from.id !== page.id)?.from.id ?? thread.id
-                          // Use the participant's display name from the Conversations API
-                          // rather than the raw numeric id, so backfilled chats show a name.
-                          const participantName = thread.participants?.data?.find((p) => p.id === otherParticipant)?.name
-
-                          const { data: conv } = await adminSupabase.from('conversations').upsert(
-                            {
-                                          platform: 'facebook',
-                                          external_thread_id: otherParticipant,
-                                          contact_name: participantName ?? otherParticipant,
-                                          contact_handle: otherParticipant,
-                                          status: 'needs_reply',
-                                          last_message_at: msgs[0]?.created_time ?? new Date().toISOString(),
-                            },
-                            { onConflict: 'platform,external_thread_id' }
-                                    ).select().single()
-
-                          if (!conv) continue
-
-                          let lastInboundText: string | null = null
-                          for (const m of msgs) {
-                                      if (!m.message) continue
-                                      await adminSupabase.from('messages').upsert(
-                                        {
-                                                        conversation_id: conv.id,
-                                                        direction: m.from.id === page.id ? 'outbound' : 'inbound',
-                                                        body: m.message,
-                                                        external_message_id: m.id,
-                                                        sent_at: m.created_time,
-                                        },
-                                        { onConflict: 'external_message_id', ignoreDuplicates: true }
-                                                  )
-                                      if (m.from.id !== page.id) lastInboundText = m.message
-                          }
-
-                          if (lastInboundText) {
-                                      const triage = await triageMessage(lastInboundText, otherParticipant, 'facebook')
-                                      await adminSupabase
-                                        .from('conversations')
-                                        .update({ category: triage.category, priority: triage.priority })
-                                        .eq('id', conv.id)
-                          }
-                }
-        } catch (err) {
-                console.error(`[meta/callback] conversation backfill failed for page ${page.id}:`, err)
-        }
   }
+
+  // NOTE: Facebook/Instagram DMs sync through Zernio (the messaging provider),
+  // not this direct-Meta OAuth. This connection only holds the publishing token
+  // for the post portal, so we no longer subscribe the Page to Meta's messaging
+  // webhook or backfill conversations here — that duplicated Zernio's inbox and
+  // produced rows without an owning user_id.
 
   await auditLog('platform_connected', { platform: 'facebook', pageCount: pages.length })
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminSupabase } from '@/lib/supabase/admin'
 import { requireApiAuth } from '@/lib/auth/requireApiAuth'
+import { getCurrentUserId } from '@/lib/auth/currentUser'
 import { encryptToken } from '@/lib/crypto/tokenCipher'
 import { auditLog } from '@/lib/audit/log'
 import { TELEGRAM_API, telegramWebhookSecret } from '@/lib/platform/telegram'
@@ -58,6 +59,7 @@ export async function POST(request: NextRequest) {
 
   // Single-owner app: keep exactly one Telegram connection, so a reconnect with
   // a different bot replaces the old one rather than leaving a stale row.
+  const ownerId = await getCurrentUserId()
   await adminSupabase.from('platform_connections').delete().eq('platform', 'telegram')
   await adminSupabase.from('platform_connections').insert({
     platform: 'telegram',
@@ -66,6 +68,7 @@ export async function POST(request: NextRequest) {
     refresh_token: null,
     expires_at: null,
     connected_at: new Date().toISOString(),
+    ...(ownerId ? { user_id: ownerId } : {}),
   })
 
   await auditLog('platform_connected', { platform: 'telegram', bot: me.result.username ?? botId })

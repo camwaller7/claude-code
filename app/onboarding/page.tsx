@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { adminSupabase } from '@/lib/supabase/admin'
 import { requireAuth } from '@/lib/auth/requireAuth'
+import { multiUserEnabled, currentUserIsOwner } from '@/lib/auth/currentUser'
+import { redirect } from 'next/navigation'
 import { Platform, PlatformConnection } from '@/types'
 import { TelegramConnectForm } from '@/components/onboarding/TelegramConnectForm'
 import Link from 'next/link'
@@ -70,6 +72,12 @@ const PLATFORM_CONFIGS: PlatformConfig[] = [
 
 export default async function OnboardingPage() {
   await requireAuth()
+  // Direct-platform OAuth is owner-only in multi-user mode (it holds the post
+  // portal's publishing tokens; trial users connect messaging via Zernio in
+  // Settings). Send non-owners there instead of showing the direct-connect UI.
+  if (multiUserEnabled() && !(await currentUserIsOwner())) {
+    redirect('/settings')
+  }
   const { data: connections } = await adminSupabase
     .from('platform_connections')
     .select('*')

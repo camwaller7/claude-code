@@ -1,4 +1,5 @@
 import { createServerClient } from '@/lib/supabase/server'
+import { isOwnerEmail } from '@/lib/auth/isOwner'
 
 // Multi-user rollout flag. While false the app behaves as the single-creator
 // pilot (owner-only gate, unscoped writes). Flip to true — AFTER migration 021
@@ -19,6 +20,22 @@ export async function getCurrentUserId(): Promise<string | null> {
     return data.user?.id ?? null
   } catch {
     return null
+  }
+}
+
+// Whether the current session belongs to the app owner. Used to gate the
+// owner-only surfaces that survive into multi-user mode — the direct-OAuth
+// platform connect/callback flows and post-portal publishing (Zernio has no
+// publishing API, and per-trial-user Meta OAuth would exceed Meta's test-user
+// limit, so auto-publish stays owner-only until real App Review). Verifies the
+// JWT via getUser, so it's safe as an access boundary.
+export async function currentUserIsOwner(): Promise<boolean> {
+  try {
+    const supabase = await createServerClient()
+    const { data } = await supabase.auth.getUser()
+    return isOwnerEmail(data.user?.email)
+  } catch {
+    return false
   }
 }
 

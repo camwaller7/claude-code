@@ -10,6 +10,24 @@ import { hasActivePlan } from '@/lib/billing/subscription'
 // subscribe / manage billing / connect accounts while on the free gate.
 const PLAN_EXEMPT_PREFIXES = ['/api/billing/', '/api/zernio/connect', '/api/media']
 
+// Owner-only surfaces in multi-user mode: the direct-platform OAuth flows
+// (Meta/IG/X/Gmail/Threads/Telegram connect + callbacks). These predate per-user
+// scoping and hold the owner's own legacy tokens. Trial users connect messaging
+// through Zernio (/api/zernio/*) and publishing through Ayrshare
+// (/api/ayrshare/*), never these. Post publishing itself is NOT owner-only —
+// any user can publish through their own linked Ayrshare profile.
+const OWNER_ONLY_PREFIXES = [
+  '/api/meta/',
+  '/api/instagram/',
+  '/api/threads/',
+  '/api/gmail/',
+  '/api/x/',
+  '/api/telegram/',
+]
+function isOwnerOnlyPath(path: string): boolean {
+  return OWNER_ONLY_PREFIXES.some((p) => path.startsWith(p))
+}
+
 function safeEqual(a: string, b: string): boolean {
   const bufA = Buffer.from(a)
   const bufB = Buffer.from(b)
@@ -52,11 +70,20 @@ export async function requireApiAuth(request?: Request): Promise<NextResponse | 
       // data/AI endpoints. Enforced here (not just on page navigation) so the
       // API itself can't be called directly without a plan. Billing/connect
       // paths stay reachable so a user can subscribe.
-      if (multiUserEnabled() && billingEnabled() && !isOwnerEmail(user.email)) {
+      if (multiUserEnabled() && !isOwnerEmail(user.email)) {
         const path = request ? new URL(request.url).pathname : ''
-        const exempt = PLAN_EXEMPT_PREFIXES.some(p => path.startsWith(p))
-        if (!exempt && !(await hasActivePlan(user.id))) {
-          return NextResponse.json({ error: 'Subscription required' }, { status: 402 })
+        // Owner-only surfaces (direct-OAuth connect/callback, publishing) are
+        // never reachable by trial users.
+        if (isOwnerOnlyPath(path)) {
+          return NextResponse.json({ error: 'Not available on your plan' }, { status: 403 })
+        }
+        // Multi-user paywall: non-owner users need an active subscription to
+        // reach data/AI endpoints. Billing/connect paths stay reachable.
+        if (billingEnabled()) {
+          const exempt = PLAN_EXEMPT_PREFIXES.some(p => path.startsWith(p))
+          if (!exempt && !(await hasActivePlan(user.id))) {
+            return NextResponse.json({ error: 'Subscription required' }, { status: 402 })
+          }
         }
       }
       return null

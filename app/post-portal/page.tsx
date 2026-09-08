@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Send } from 'lucide-react'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { NewPostDialog } from '@/components/post-portal/NewPostDialog'
+import { PublishConnect } from '@/components/post-portal/PublishConnect'
 import { PublishNowButton } from '@/components/post-portal/PublishNowButton'
 import { formatDate } from '@/lib/utils'
 import type { Post, PostStatus } from '@/types'
@@ -35,6 +36,7 @@ export default async function PostPortalPage() {
         </div>
         <NewPostDialog />
       </div>
+      <PublishConnect />
       {!posts || posts.length === 0 ? (
         <div className="pt-6">
           <EmptyState

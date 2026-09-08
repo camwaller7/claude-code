@@ -2,6 +2,8 @@ import { inngest } from './client'
 import { adminSupabase } from '@/lib/supabase/admin'
 import { getValidToken, getValidMetaToken } from '@/lib/platform/tokens'
 import { META_GRAPH_VERSION, THREADS_GRAPH_VERSION } from '@/lib/platform/metaVersion'
+import { ayrshareEnabled, publishToAyrshare, fromAyrsharePlatform } from '@/lib/platform/ayrshare'
+import { getAyrshareProfileKey } from '@/lib/platform/ayrshareProfile'
 import type { Platform } from '@/types'
 
 // ─── Inbox sync (runs every 15 min) ──────────────────────────────────────────
@@ -165,16 +167,66 @@ export const publishPost = inngest.createFunction(
       const hashtags = (post.hashtags as string) || ''
       const mediaUrl = post.media_url as string | null
       const fullCaption = hashtags ? `${caption}\n\n${hashtags}` : caption
+      // Scope every credential lookup to the post's owner so one tenant can
+      // never publish through another's connection. In the single-tenant pilot
+      // user_id is null and the filter is skipped (all rows are the owner's).
+      const ownerId = (post.user_id as string | null) ?? null
+      // Cast through unknown to avoid TS2589 (the Supabase builder's recursive
+      // generic type blows the instantiation-depth limit when wrapped).
+      const scopeConn = <T,>(q: T): T =>
+        ownerId ? ((q as unknown as { eq: (c: string, v: string) => T }).eq('user_id', ownerId)) : q
+
+      // Preferred path: publish through the owner's Ayrshare profile. This is
+      // how multi-user publishing works (each user links their own accounts via
+      // Ayrshare's SSO), and it covers Threads/TikTok. Falls through to the
+      // legacy direct-Meta/X path only when the user has no Ayrshare profile
+      // (e.g. the single-tenant owner who still uses direct tokens).
+      if (ayrshareEnabled() && ownerId) {
+        const profileKey = await getAyrshareProfileKey(ownerId)
+        if (profileKey) {
+          const res = await publishToAyrshare(profileKey, {
+            post: fullCaption,
+            platforms,
+            mediaUrls: mediaUrl ? [mediaUrl] : undefined,
+          })
+          if (!res.ok || !res.data) {
+            // Whole-request failure (auth, quota, network): fail every platform
+            // with the same reason so the post is marked failed, not silently
+            // dropped.
+            return platforms.map((platform) => ({
+              platform,
+              success: false,
+              error: res.error ?? 'Ayrshare publish failed',
+            }))
+          }
+          const byPlatform = new Map<string, { id?: string; status?: string }>()
+          for (const pid of res.data.postIds ?? []) {
+            byPlatform.set(fromAyrsharePlatform(pid.platform), { id: pid.id, status: pid.status })
+          }
+          const errByPlatform = new Map<string, string>()
+          for (const e of res.data.errors ?? []) {
+            if (e.platform) errByPlatform.set(fromAyrsharePlatform(e.platform), e.message ?? 'Publish failed')
+          }
+          return platforms.map((platform) => {
+            const err = errByPlatform.get(platform)
+            if (err) return { platform, success: false, error: err }
+            const hit = byPlatform.get(platform)
+            return { platform, success: true, postId: hit?.id }
+          })
+        }
+      }
 
       const output: PublishResult[] = []
 
       for (const platform of platforms) {
         try {
           if (platform === 'instagram') {
-            const { data: conn } = await adminSupabase
-              .from('platform_connections')
-              .select('access_token, account_id')
-              .eq('platform', 'instagram')
+            const { data: conn } = await scopeConn(
+              adminSupabase
+                .from('platform_connections')
+                .select('access_token, account_id')
+                .eq('platform', 'instagram')
+            )
               .limit(1)
               .single()
             if (!conn) throw new Error('No Instagram connection')
@@ -186,10 +238,12 @@ export const publishPost = inngest.createFunction(
             output.push({ platform, success: true, postId: id })
 
           } else if (platform === 'facebook') {
-            const { data: conn } = await adminSupabase
-              .from('platform_connections')
-              .select('access_token, account_id')
-              .eq('platform', 'facebook')
+            const { data: conn } = await scopeConn(
+              adminSupabase
+                .from('platform_connections')
+                .select('access_token, account_id')
+                .eq('platform', 'facebook')
+            )
               .limit(1)
               .single()
             if (!conn) throw new Error('No Facebook connection')
@@ -206,10 +260,12 @@ export const publishPost = inngest.createFunction(
             output.push({ platform, success: true, postId: id })
 
           } else if (platform === 'threads') {
-            const { data: conn } = await adminSupabase
-              .from('platform_connections')
-              .select('access_token, account_id')
-              .eq('platform', 'threads')
+            const { data: conn } = await scopeConn(
+              adminSupabase
+                .from('platform_connections')
+                .select('access_token, account_id')
+                .eq('platform', 'threads')
+            )
               .limit(1)
               .single()
             if (!conn) throw new Error('No Threads connection')
