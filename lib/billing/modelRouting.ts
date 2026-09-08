@@ -1,6 +1,6 @@
 import { tierConfig, HAIKU, OPUS } from '@/lib/billing/tiers'
 import { getUserTier } from '@/lib/billing/subscription'
-import { getDailyInteractionCount, getOpusWeekSpendCents } from '@/lib/billing/limits'
+import { reserveDailyInteraction, getOpusWeekSpendCents } from '@/lib/billing/limits'
 import { getUserCredits } from '@/lib/billing/credits'
 
 export interface ModelDecision {
@@ -32,12 +32,14 @@ export async function resolveModelForUser(
   const tier = await getUserTier(userId)
   const cfg = tierConfig(tier)
 
-  // Starter daily interaction cap: once the included allowance is spent, fall
-  // back to purchased interaction credits; block only when those are gone too.
+  // Starter daily interaction cap: atomically reserve a slot up front (so
+  // concurrent calls can't all slip past the same pre-write count). If the cap
+  // is reached, fall back to purchased interaction credits; block only when
+  // those are gone too. The credit is consumed post-call by the caller.
   let useInteractionCredit = false
   if (cfg.dailyInteractionCap != null) {
-    const used = await getDailyInteractionCount(userId)
-    if (used >= cfg.dailyInteractionCap) {
+    const reserved = await reserveDailyInteraction(userId, cfg.dailyInteractionCap)
+    if (reserved == null) {
       const credits = await getUserCredits(userId)
       if (credits.interaction_credits > 0) {
         useInteractionCredit = true

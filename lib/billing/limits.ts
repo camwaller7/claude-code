@@ -20,7 +20,31 @@ function startOfWeekUTC(): string {
   return d.toISOString()
 }
 
+// Atomically reserve one of today's interactions against the tier's daily cap.
+// Returns the new running count when the reservation succeeds, or null when the
+// cap is already reached. Unlike counting token_usage (which is written after
+// the call, so concurrent requests race), this increments a counter in a single
+// atomic statement BEFORE dispatch, so the cap can't be burst past. See
+// migration 032.
+export async function reserveDailyInteraction(
+  userId: string,
+  cap: number
+): Promise<number | null> {
+  const { data, error } = await adminSupabase.rpc('reserve_daily_interaction', {
+    p_user_id: userId,
+    p_cap: cap,
+  })
+  if (error) {
+    // Fail open on infra errors rather than blocking a paying user's call; the
+    // cap is a cost guardrail, not a security boundary.
+    console.error('[limits] reserve_daily_interaction failed:', error.message)
+    return 0
+  }
+  return (data as number | null) ?? null
+}
+
 // Count today's AI interactions for a user (categorisations + drafts + chat).
+// Used for reporting/display; gating goes through reserveDailyInteraction.
 export async function getDailyInteractionCount(userId: string): Promise<number> {
   const { count } = await adminSupabase
     .from('token_usage')
