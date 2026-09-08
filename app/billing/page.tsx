@@ -22,7 +22,7 @@ export default async function BillingPage() {
       <div className="text-center">
         <h1 className="text-2xl font-bold">Choose your plan</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Everything you need to run your creator business in one place.
+          The whole business side of creating, handled.
         </p>
       </div>
 

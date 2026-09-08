@@ -92,7 +92,7 @@ export default async function OnboardingPage() {
       <div className="max-w-2xl">
         <div className="mb-6">
           <h1 className="text-2xl font-bold">Platform Connections</h1>
-          <p className="text-sm text-muted-foreground">Connect your social platforms to start syncing messages and scheduling posts.</p>
+          <p className="text-sm text-muted-foreground">Connect once. Your messages and stats flow in from there.</p>
         </div>
         <div className="mb-6 rounded-lg border border-border bg-muted/40 p-4">
           <h2 className="text-sm font-semibold">Before you connect</h2>

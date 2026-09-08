@@ -166,7 +166,7 @@ export function DashboardClient({ paidDeals, pipelineDeals, allDeals, allConvers
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">{greeting} ✨</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Here&apos;s how your creator business is doing today</p>
+          <p className="text-sm text-muted-foreground mt-0.5">Your business, at a glance.</p>
         </div>
         <div className="flex items-center gap-2 rounded-full bg-violet-100 dark:bg-violet-900/30 px-3 py-1.5">
           <Zap className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />

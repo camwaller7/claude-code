@@ -43,7 +43,7 @@ export default async function InboxPage({ searchParams }: Props) {
       <RealtimeInbox />
       <div className="mb-4">
         <h1 className="text-2xl font-bold">Inbox</h1>
-        <p className="text-sm text-muted-foreground">All your messages in one place</p>
+        <p className="text-sm text-muted-foreground">Every conversation, one place.</p>
       </div>
       <Suspense>
         <InboxFilters />
@@ -52,11 +52,11 @@ export default async function InboxPage({ searchParams }: Props) {
         <div className="pt-6">
           <EmptyState
             icon={q ? Search : Inbox}
-            title={q ? `No results for “${q}”` : 'Your inbox is empty'}
+            title={q ? `No results for “${q}”` : 'All caught up'}
             description={
               q
                 ? 'Try a different name or handle.'
-                : 'New Instagram and Facebook DMs will appear here automatically once your accounts are connected.'
+                : 'New Instagram and Facebook messages arrive here the moment they land.'
             }
           />
         </div>

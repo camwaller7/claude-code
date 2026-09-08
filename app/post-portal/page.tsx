@@ -67,7 +67,7 @@ export default async function PostPortalPage() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Post Portal</h1>
-          <p className="text-sm text-muted-foreground">Schedule and manage your content</p>
+          <p className="text-sm text-muted-foreground">Plan it, schedule it, publish it.</p>
         </div>
         <NewPostDialog />
       </div>
@@ -76,7 +76,7 @@ export default async function PostPortalPage() {
           <EmptyState
             icon={Send}
             title="No posts yet"
-            description="Draft, schedule, and auto-publish content to your connected platforms. Create your first post with the button above."
+            description="Draft once, publish everywhere. Start your first post above."
           />
         </div>
       ) : (

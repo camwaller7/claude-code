@@ -7,23 +7,23 @@ import { Button } from '@/components/ui/button'
 const STEPS = [
   {
     emoji: '👋',
-    title: 'Welcome to Corvelle!',
-    body: 'One place for your DMs, brand deals, clients and content — with an AI assistant that does the busy work for you.',
+    title: 'Welcome to Corvelle',
+    body: 'Your DMs, deals, clients and content — together, with an assistant that handles the busywork.',
   },
   {
     emoji: '✨',
     title: 'Meet your assistant',
-    body: 'Tap the sparkle button in the corner any time. Ask it to check your deals, draft replies or find follow-ups. You can name it and give it a personality in Settings.',
+    body: 'Tap the sparkle any time. Ask it to triage your inbox, draft a reply, or chase a follow-up. Name it and set its tone in Settings.',
   },
   {
     emoji: '🔗',
     title: 'Connect your accounts',
-    body: 'Head to Settings to link your Instagram and Facebook — that’s what flows your DMs into Corvelle. It takes about a minute, and you can do it any time.',
+    body: 'Link Instagram and Facebook in Settings — that’s what brings your DMs in. A minute now, or whenever you’re ready.',
   },
   {
     emoji: '🚀',
     title: "You're all set",
-    body: 'Your inbox and deal pipeline are ready. Have a look around — nothing sends without your say-so.',
+    body: 'Have a look around. Nothing goes out without your say-so.',
   },
 ]
 

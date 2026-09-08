@@ -32,7 +32,7 @@ export default async function SettingsPage() {
       <div>
         <h1 className="text-2xl font-bold">Settings</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Your look, your assistant, your AI model and usage
+          Make Corvelle yours.
         </p>
       </div>
       <AccountPanel />

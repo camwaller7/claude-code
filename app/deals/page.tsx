@@ -37,7 +37,7 @@ export default async function DealsPage() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Deals Pipeline</h1>
-          <p className="text-sm text-muted-foreground">Track brand deal progress</p>
+          <p className="text-sm text-muted-foreground">Every deal, from first hello to paid.</p>
         </div>
         <NewDealDialog />
       </div>

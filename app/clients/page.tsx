@@ -33,7 +33,7 @@ export default async function ClientsPage() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Clients</h1>
-          <p className="text-sm text-muted-foreground">Course buyers and coaching clients</p>
+          <p className="text-sm text-muted-foreground">The people you work with.</p>
         </div>
         <NewClientDialog />
       </div>
@@ -42,7 +42,7 @@ export default async function ClientsPage() {
           <EmptyState
             icon={Users}
             title="No clients yet"
-            description="Track your course buyers and coaching clients here — add one with the button above to keep their details and history in one place."
+            description="Everyone you coach and sell to, in one place. Add your first above."
           />
         </div>
       ) : (
