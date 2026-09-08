@@ -20,8 +20,12 @@ export function PublishNowButton({ postId, status }: { postId: string; status: P
         toast.error('Could not queue the post — try again')
         return
       }
-      toast.success('Publishing now 🚀')
+      toast.success('Publishing now 🚀 — it’ll move to Posted once it’s live.')
       router.refresh()
+      // The publish runs in a background job, so the status flips to "published"
+      // a few seconds later. Refresh again so the post moves to the Posted tab
+      // without the user having to reload.
+      setTimeout(() => router.refresh(), 5000)
     } finally {
       setLoading(false)
     }

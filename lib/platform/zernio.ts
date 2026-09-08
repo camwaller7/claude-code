@@ -164,21 +164,23 @@ export interface ZernioPublishTarget {
   accountId: string
 }
 
-// One entry per platform in Zernio's create-post response.
-export interface ZernioPostResult {
-  platform?: string
-  accountId?: string
-  status?: string
-  platformPostUrl?: string
-  postId?: string
-  id?: string
-  error?: string
-  success?: boolean
+// Zernio's create-post response. On a full success (201) the body is
+// { post: { _id, status, ... } }; on a partial/failed inline publish (207) it
+// also carries platformResults[] with a per-platform status + error. The post's
+// own _id is what analytics (content_metrics.external_post_id) is keyed on.
+export interface ZernioPlatformResult {
+  platform?: string // Zernio platform name, matches post.platforms[].platform
+  status?: string // pending | processing | published | failed | cancelled | uploading
+  error?: string | null
 }
 export interface ZernioCreatePostResponse {
-  id?: string
-  results?: ZernioPostResult[]
-  platforms?: ZernioPostResult[]
+  message?: string
+  error?: string
+  post?: {
+    _id?: string
+    status?: string
+  }
+  platformResults?: ZernioPlatformResult[]
 }
 
 // Publish (or schedule) a post to one or more connected accounts. Pass

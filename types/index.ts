@@ -8,7 +8,7 @@ export type DealStatus = 'inquiry' | 'negotiating' | 'contracted' | 'delivered' 
 
 export type ClientStatus = 'active' | 'churned' | 'refunded'
 
-export type PostStatus = 'draft' | 'scheduled' | 'publishing' | 'published' | 'failed'
+export type PostStatus = 'draft' | 'scheduled' | 'publishing' | 'published' | 'partial' | 'failed'
 
 export interface PlatformConnection {
   id: string
@@ -98,6 +98,7 @@ export interface Post {
   status: PostStatus
   published_at: string | null
   platform_post_ids: Record<string, string> | null
+  publish_errors: Record<string, string> | null
   created_at: string
 }
 

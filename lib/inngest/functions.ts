@@ -227,15 +227,21 @@ export const publishPost = inngest.createFunction(
               output.push({ platform: t.our, success: false, error: res.error ?? 'Zernio publish failed' })
             }
           } else {
-            // Map any per-platform errors Zernio returned (207 partial failure).
+            // The Zernio post _id is what analytics is keyed on; store it as the
+            // per-platform post id so the Posted tab can look up performance.
+            const zernioPostId = res.data.post?._id
+            // Per-platform errors (207 partial failure); a platform is failed
+            // when its status is 'failed' or it carries an error.
             const errByPlatform = new Map<string, string>()
-            for (const r of res.data.results ?? res.data.platforms ?? []) {
-              if (r.error && r.platform) errByPlatform.set(r.platform, r.error)
+            for (const r of res.data.platformResults ?? []) {
+              if (r.platform && (r.status === 'failed' || r.error)) {
+                errByPlatform.set(r.platform, r.error ?? 'Publish failed')
+              }
             }
             for (const t of targets) {
               const err = errByPlatform.get(t.platform)
               if (err) output.push({ platform: t.our, success: false, error: err })
-              else output.push({ platform: t.our, success: true, postId: res.data.id })
+              else output.push({ platform: t.our, success: true, postId: zernioPostId })
             }
           }
         }
