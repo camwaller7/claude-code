@@ -14,6 +14,8 @@ export type AuditAction =
   | 'client_updated'
   | 'ai_action'
   | 'maintenance_mode_toggled'
+  | 'account_deleted'
+  | 'data_exported'
 
 /**
  * Fire-and-forget audit write — never let logging failure break the actual

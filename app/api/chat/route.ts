@@ -7,6 +7,7 @@ import { getReminders } from '@/lib/reminders/engine'
 import { auditLog } from '@/lib/audit/log'
 import { getLLMSettings, logTokenUsage } from '@/lib/llm/settings'
 import { getPersonaTheme } from '@/lib/settings/userSettings'
+import { checkRateLimit, clientIp } from '@/lib/rateLimit'
 import { llmComplete } from '@/lib/llm/client'
 import { checkAIBudget } from '@/lib/llm/budget'
 import { scopedUserId, multiUserEnabled } from '@/lib/auth/currentUser'
@@ -340,6 +341,12 @@ function sanitizeMessages(messages: Anthropic.MessageParam[]): Anthropic.Message
 export async function POST(request: NextRequest) {
   const unauthorized = await requireApiAuth(request)
   if (unauthorized) return unauthorized
+
+  // Rate-limit the assistant per user (it's the main cost/abuse vector): 20
+  // messages per rolling minute is generous for real use but caps runaway loops.
+  const rlUserId = (await scopedUserId()) ?? clientIp(request)
+  const limited = await checkRateLimit({ key: `chat:${rlUserId}`, limit: 20, windowSeconds: 60 })
+  if (limited) return limited
 
   let messages: Anthropic.MessageParam[]
   let requestedModel: string | undefined

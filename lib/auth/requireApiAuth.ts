@@ -8,7 +8,13 @@ import { hasActivePlan } from '@/lib/billing/subscription'
 
 // Paths reachable without an active subscription, so a user can actually
 // subscribe / manage billing / connect accounts while on the free gate.
-const PLAN_EXEMPT_PREFIXES = ['/api/billing/', '/api/zernio/connect', '/api/media']
+const PLAN_EXEMPT_PREFIXES = [
+  '/api/billing/',
+  '/api/zernio/connect',
+  '/api/media',
+  // Data-rights endpoints must work regardless of subscription state.
+  '/api/account/',
+]
 
 // Owner-only surfaces in multi-user mode: the direct-platform OAuth flows
 // (Meta/IG/X/Gmail/Threads/Telegram connect + callbacks). These predate per-user
