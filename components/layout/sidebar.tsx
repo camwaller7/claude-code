@@ -48,27 +48,38 @@ export function Sidebar({
       style={{ background: 'var(--sidebar-bg)' }}
     >
       <div className="flex h-14 items-center border-b px-4">
-        {/* Label hides when collapsed on desktop; always shown in the mobile drawer. */}
-        <span className={cn('text-sm font-semibold text-muted-foreground', collapsed && 'md:hidden')}>
-          Navigation
+        {/* Brand wordmark; collapses to just the mark on desktop, full in the drawer. */}
+        <span className={cn('text-base font-bold tracking-tight brand-text', collapsed && 'md:hidden')}>
+          Corvelle
         </span>
+        <span className={cn('hidden text-base font-bold brand-text', collapsed && 'md:inline')}>C</span>
       </div>
       <nav className="flex flex-1 flex-col gap-1 p-2">
-        {navItems.map(({ href, label, icon: Icon }) => (
+        {navItems.map(({ href, label, icon: Icon }) => {
+          const active = pathname.startsWith(href)
+          return (
           <Link
             key={href}
             href={href}
             onClick={onNavigate}
             title={collapsed ? label : undefined}
             className={cn(
-              'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+              'group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
               collapsed && 'md:justify-center md:px-2',
-              pathname.startsWith(href)
+              active
                 ? 'bg-accent text-accent-foreground'
                 : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
             )}
           >
-            <Icon className="h-4 w-4 shrink-0" />
+            {/* Active-state accent bar on the leading edge. */}
+            {active && (
+              <span
+                className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full"
+                style={{ background: 'var(--brand-accent)' }}
+                aria-hidden="true"
+              />
+            )}
+            <Icon className={cn('h-4 w-4 shrink-0', active && 'text-[var(--brand-accent)]')} />
             <span className={cn('flex-1', collapsed && 'md:hidden')}>{label}</span>
             {href === '/inbox' && unread > 0 && (
               <span className={cn(
@@ -79,7 +90,8 @@ export function Sidebar({
               </span>
             )}
           </Link>
-        ))}
+          )
+        })}
       </nav>
       <div className="border-t p-2">
         <Link

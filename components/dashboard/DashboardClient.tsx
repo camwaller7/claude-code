@@ -86,7 +86,7 @@ function StatCard({
   trend?: 'up' | 'down' | 'flat'
 }) {
   return (
-    <div className={`rounded-2xl p-4 flex flex-col gap-3 ${color}`}>
+    <div className={`ring-hairline card-elevated rounded-2xl p-4 flex flex-col gap-3 ${color}`}>
       <div className="flex items-center justify-between">
         <div className="rounded-xl bg-white/20 p-2">
           <Icon className="h-4 w-4 text-white" />
@@ -216,7 +216,7 @@ export function DashboardClient({ paidDeals, pipelineDeals, allDeals, allConvers
       {/* Charts row */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Message activity */}
-        <div className="rounded-2xl border bg-card p-4 flex flex-col gap-3">
+        <div className="rounded-2xl border bg-card card-elevated p-4 flex flex-col gap-3">
           <div>
             <p className="font-semibold">Message Activity</p>
             <p className="text-xs text-muted-foreground">Inbound vs replies — last 7 days</p>
@@ -247,7 +247,7 @@ export function DashboardClient({ paidDeals, pipelineDeals, allDeals, allConvers
         </div>
 
         {/* Revenue chart */}
-        <div className="rounded-2xl border bg-card p-4 flex flex-col gap-3">
+        <div className="rounded-2xl border bg-card card-elevated p-4 flex flex-col gap-3">
           <div>
             <p className="font-semibold">Revenue Activity</p>
             <p className="text-xs text-muted-foreground">Deals paid — last 7 days</p>
@@ -269,7 +269,7 @@ export function DashboardClient({ paidDeals, pipelineDeals, allDeals, allConvers
       {/* Bottom row: pie charts */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Inbox breakdown */}
-        <div className="rounded-2xl border bg-card p-4 flex flex-col gap-3">
+        <div className="rounded-2xl border bg-card card-elevated p-4 flex flex-col gap-3">
           <div>
             <p className="font-semibold">Inbox Breakdown</p>
             <p className="text-xs text-muted-foreground">Messages by category</p>
@@ -297,7 +297,7 @@ export function DashboardClient({ paidDeals, pipelineDeals, allDeals, allConvers
         </div>
 
         {/* Deal pipeline */}
-        <div className="rounded-2xl border bg-card p-4 flex flex-col gap-3">
+        <div className="rounded-2xl border bg-card card-elevated p-4 flex flex-col gap-3">
           <div>
             <p className="font-semibold">Deal Pipeline</p>
             <p className="text-xs text-muted-foreground">Deals by stage</p>

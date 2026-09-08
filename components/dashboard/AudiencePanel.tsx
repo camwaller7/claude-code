@@ -74,7 +74,7 @@ function MetricTiles({ vm }: { vm: ViewModel }) {
   const up7 = vm.netChange7d >= 0
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      <div className="rounded-2xl border bg-card p-3 flex flex-col gap-1">
+      <div className="rounded-2xl border bg-card card-elevated p-3 flex flex-col gap-1">
         <div className="flex items-center justify-between">
           <p className="text-xs text-muted-foreground">Followers</p>
           {up7 ? <TrendingUp className="h-3.5 w-3.5 text-emerald-500" /> : <TrendingDown className="h-3.5 w-3.5 text-red-500" />}
@@ -84,7 +84,7 @@ function MetricTiles({ vm }: { vm: ViewModel }) {
           {up7 ? '+' : ''}{fmt(vm.netChange7d)} this week
         </p>
       </div>
-      <div className="rounded-2xl border bg-card p-3 flex flex-col gap-1">
+      <div className="rounded-2xl border bg-card card-elevated p-3 flex flex-col gap-1">
         <div className="flex items-center justify-between">
           <p className="text-xs text-muted-foreground">Views</p>
           <Eye className="h-3.5 w-3.5 text-muted-foreground" />
@@ -92,7 +92,7 @@ function MetricTiles({ vm }: { vm: ViewModel }) {
         <p className="text-xl font-bold">{fmt(vm.views)}</p>
         <p className="text-xs text-muted-foreground">{vm.postsPublished} posts · 7d</p>
       </div>
-      <div className="rounded-2xl border bg-card p-3 flex flex-col gap-1">
+      <div className="rounded-2xl border bg-card card-elevated p-3 flex flex-col gap-1">
         <div className="flex items-center justify-between">
           <p className="text-xs text-muted-foreground">Interactions</p>
           <Heart className="h-3.5 w-3.5 text-muted-foreground" />
@@ -100,7 +100,7 @@ function MetricTiles({ vm }: { vm: ViewModel }) {
         <p className="text-xl font-bold">{fmt(vm.interactions)}</p>
         <p className="text-xs text-muted-foreground">{vm.avgEngagement}% avg engagement</p>
       </div>
-      <div className="rounded-2xl border bg-card p-3 flex flex-col gap-1">
+      <div className="rounded-2xl border bg-card card-elevated p-3 flex flex-col gap-1">
         <div className="flex items-center justify-between">
           <p className="text-xs text-muted-foreground">Best time</p>
           <Clock className="h-3.5 w-3.5 text-muted-foreground" />
@@ -115,7 +115,7 @@ function MetricTiles({ vm }: { vm: ViewModel }) {
 function GrowthAndTop({ vm }: { vm: ViewModel }) {
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-      <div className="rounded-2xl border bg-card p-4 flex flex-col gap-3">
+      <div className="rounded-2xl border bg-card card-elevated p-4 flex flex-col gap-3">
         <div>
           <p className="font-semibold">Follower Growth</p>
           <p className="text-xs text-muted-foreground">
@@ -147,7 +147,7 @@ function GrowthAndTop({ vm }: { vm: ViewModel }) {
         )}
       </div>
 
-      <div className="rounded-2xl border bg-card p-4 flex flex-col gap-3">
+      <div className="rounded-2xl border bg-card card-elevated p-4 flex flex-col gap-3">
         <div className="flex items-center gap-2">
           <Trophy className="h-4 w-4 text-amber-500" />
           <p className="font-semibold">Top Post</p>
