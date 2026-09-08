@@ -46,7 +46,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </button>
             <div className="flex items-center gap-2">
               <Image src="/corvelle-icon.png" alt="Corvelle" width={24} height={24} className="rounded-md" />
-              <span className="text-base font-semibold">Corvelle</span>
+              <span className="font-display text-lg font-semibold tracking-tight">Corvelle</span>
             </div>
           </div>
           <div className="flex items-center gap-2">

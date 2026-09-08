@@ -51,10 +51,10 @@ export function Sidebar({
     >
       <div className="flex h-14 items-center border-b px-4">
         {/* Brand wordmark; collapses to just the mark on desktop, full in the drawer. */}
-        <span className={cn('text-base font-bold tracking-tight brand-text', collapsed && 'md:hidden')}>
+        <span className={cn('font-display text-lg font-semibold tracking-tight brand-text', collapsed && 'md:hidden')}>
           Corvelle
         </span>
-        <span className={cn('hidden text-base font-bold brand-text', collapsed && 'md:inline')}>C</span>
+        <span className={cn('hidden font-display text-lg font-semibold brand-text', collapsed && 'md:inline')}>C</span>
       </div>
       <nav className="flex flex-1 flex-col gap-1 p-2">
         {navItems.map(({ href, label, icon: Icon }) => {
