@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { Sidebar } from './sidebar'
 import { PanelLeftClose, PanelLeftOpen, Menu } from 'lucide-react'
 import { AIChat } from '@/components/chat/AIChat'
+import { AnalyticsSyncOnLoad } from '@/components/analytics/AnalyticsSyncOnLoad'
 import { ThemeToggle } from './ThemeToggle'
 import { UserMenu } from './UserMenu'
 import { NotificationBell } from './NotificationBell'
@@ -57,6 +58,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <main className="flex-1 overflow-auto p-4 md:p-6">{children}</main>
       </div>
       <AIChat />
+      <AnalyticsSyncOnLoad />
     </div>
   )
 }
