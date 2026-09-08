@@ -1,8 +1,12 @@
 export const dynamic = 'force-dynamic'
 
+import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/auth/requireAuth'
 import { scopedUserId } from '@/lib/auth/currentUser'
+import { currentUserHasFeature } from '@/lib/billing/features'
+import { postPortalEnabled } from '@/lib/flags'
+import { UpgradeNotice } from '@/components/billing/UpgradeNotice'
 import { Badge } from '@/components/ui/badge'
 import { Send } from 'lucide-react'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -21,6 +25,12 @@ function statusVariant(status: PostStatus): 'default' | 'secondary' | 'destructi
 
 export default async function PostPortalPage() {
   await requireAuth()
+  // Master switch: publishing is hidden for the trial (kept out of the nav too).
+  if (!postPortalEnabled()) redirect('/dashboard')
+  // When enabled, it's a Growth/Pro feature — never Starter.
+  if (!(await currentUserHasFeature('postPortal'))) {
+    return <UpgradeNotice feature="Post portal" />
+  }
   const supabase = await createServerClient()
   const uid = await scopedUserId()
   let postsQuery = supabase.from('posts').select('*').order('scheduled_at', { ascending: false })

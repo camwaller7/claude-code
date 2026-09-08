@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerSupabase } from '@/lib/supabase/server'
 import { inngest } from '@/lib/inngest/client'
 import { requireApiAuth } from '@/lib/auth/requireApiAuth'
+import { postPortalEnabled } from '@/lib/flags'
 
 export async function POST(
   request: NextRequest,
@@ -9,6 +10,7 @@ export async function POST(
 ) {
   const unauthorized = await requireApiAuth(request)
   if (unauthorized) return unauthorized
+  if (!postPortalEnabled()) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const { id } = await params
   const supabase = await createRouteHandlerSupabase()

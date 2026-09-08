@@ -22,11 +22,10 @@ interface Plan {
 const PLANS: Plan[] = [
   {
     tier: 'starter', name: 'Starter', monthly: 29, annualPerMonth: 23, annualTotal: 276,
-    tagline: 'Core inbox + scheduling on Instagram & Facebook.',
+    tagline: 'Core inbox for Instagram & Facebook.',
     features: [
       'Instagram + Facebook inbox',
       'AI replies (Fast model)',
-      'Post scheduling (IG + FB)',
       'Basic KPI dashboard',
       '50 AI actions / day',
     ],

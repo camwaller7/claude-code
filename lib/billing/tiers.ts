@@ -35,6 +35,7 @@ export interface TierConfig {
     clientPortal: boolean
     fullDashboard: boolean
     extraPlatforms: boolean // X, TikTok, Threads, Gmail
+    postPortal: boolean // scheduling/publishing — excluded from Starter
   }
 }
 
@@ -48,7 +49,7 @@ export const TIERS: Record<Tier, TierConfig> = {
     switcher: false,
     dailyInteractionCap: 50,
     opusWeeklyCapCents: null,
-    features: { brandDeals: false, clientPortal: false, fullDashboard: false, extraPlatforms: false },
+    features: { brandDeals: false, clientPortal: false, fullDashboard: false, extraPlatforms: false, postPortal: false },
   },
   growth: {
     id: 'growth',
@@ -59,7 +60,7 @@ export const TIERS: Record<Tier, TierConfig> = {
     switcher: true,
     dailyInteractionCap: null,
     opusWeeklyCapCents: null,
-    features: { brandDeals: true, clientPortal: true, fullDashboard: true, extraPlatforms: true },
+    features: { brandDeals: true, clientPortal: true, fullDashboard: true, extraPlatforms: true, postPortal: true },
   },
   pro: {
     id: 'pro',
@@ -71,7 +72,7 @@ export const TIERS: Record<Tier, TierConfig> = {
     dailyInteractionCap: null,
     // ~$5/week of Opus spend (PRICING.md).
     opusWeeklyCapCents: 500,
-    features: { brandDeals: true, clientPortal: true, fullDashboard: true, extraPlatforms: true },
+    features: { brandDeals: true, clientPortal: true, fullDashboard: true, extraPlatforms: true, postPortal: true },
   },
 }
 

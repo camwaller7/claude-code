@@ -4,10 +4,12 @@ import { inngest } from '@/lib/inngest/client'
 import { requireApiAuth } from '@/lib/auth/requireApiAuth'
 import { scopedUserId, multiUserEnabled, currentUserIsOwner } from '@/lib/auth/currentUser'
 import { ayrshareEnabled } from '@/lib/platform/ayrshare'
+import { postPortalEnabled } from '@/lib/flags'
 
 export async function GET(request: NextRequest) {
   const unauthorized = await requireApiAuth(request)
   if (unauthorized) return unauthorized
+  if (!postPortalEnabled()) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const supabase = await createRouteHandlerSupabase()
   const userId = await scopedUserId()
@@ -25,6 +27,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const unauthorized = await requireApiAuth(request)
   if (unauthorized) return unauthorized
+  if (!postPortalEnabled()) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const supabase = await createRouteHandlerSupabase()
   const userId = await scopedUserId()

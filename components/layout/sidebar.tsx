@@ -5,13 +5,15 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Inbox, Briefcase, Users, BarChart2, Send, Settings, Settings2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { postPortalEnabled } from '@/lib/flags'
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: BarChart2 },
   { href: '/inbox', label: 'Inbox', icon: Inbox },
   { href: '/deals', label: 'Deals', icon: Briefcase },
   { href: '/clients', label: 'Clients', icon: Users },
-  { href: '/post-portal', label: 'Post Portal', icon: Send },
+  // Post portal is hidden unless the master flag is on (see lib/flags.ts).
+  ...(postPortalEnabled() ? [{ href: '/post-portal', label: 'Post Portal', icon: Send }] : []),
   { href: '/settings', label: 'Settings', icon: Settings2 },
 ]
 

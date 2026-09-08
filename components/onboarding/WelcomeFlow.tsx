@@ -23,7 +23,7 @@ const STEPS = [
   {
     emoji: '🚀',
     title: "You're all set",
-    body: 'Your inbox, deal pipeline and post scheduler are ready. Have a look around — nothing sends without your say-so.',
+    body: 'Your inbox and deal pipeline are ready. Have a look around — nothing sends without your say-so.',
   },
 ]
 
