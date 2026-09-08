@@ -10,7 +10,7 @@ import { UpgradeNotice } from '@/components/billing/UpgradeNotice'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Send } from 'lucide-react'
 import { NewPostDialog } from '@/components/post-portal/NewPostDialog'
-import { PostPortalTabs, type PostMetrics } from '@/components/post-portal/PostPortalTabs'
+import { PostPortalTabs, type PlatformMetric } from '@/components/post-portal/PostPortalTabs'
 import type { Post } from '@/types'
 
 export default async function PostPortalPage() {
@@ -31,9 +31,10 @@ export default async function PostPortalPage() {
   const allPosts = (posts ?? []) as Post[]
 
   // Pull performance for published posts. Each post stores the Zernio post id in
-  // platform_post_ids; content_metrics (from the daily analytics sync) is keyed
-  // by that same external id, so we can join. Metrics are aggregated per id.
-  const metricsById: Record<string, PostMetrics> = {}
+  // platform_post_ids; content_metrics (from the analytics sync) is keyed by that
+  // same external id, with one row per platform — so we can show a per-platform
+  // breakdown plus an overall total. Metrics are grouped by external post id.
+  const metricsById: Record<string, PlatformMetric[]> = {}
   const postIds = Array.from(
     new Set(
       allPosts
@@ -45,17 +46,19 @@ export default async function PostPortalPage() {
   if (postIds.length > 0) {
     let metricsQuery = supabase
       .from('content_metrics')
-      .select('external_post_id, views, likes, comments')
+      .select('external_post_id, platform, views, likes, comments, shares')
       .in('external_post_id', postIds)
     if (uid) metricsQuery = metricsQuery.eq('user_id', uid)
     const { data: metrics } = await metricsQuery
     for (const m of metrics ?? []) {
       const id = m.external_post_id as string
-      const agg = metricsById[id] ?? { views: 0, likes: 0, comments: 0 }
-      agg.views += (m.views as number) ?? 0
-      agg.likes += (m.likes as number) ?? 0
-      agg.comments += (m.comments as number) ?? 0
-      metricsById[id] = agg
+      ;(metricsById[id] ??= []).push({
+        platform: (m.platform as string) ?? 'unknown',
+        views: (m.views as number) ?? 0,
+        likes: (m.likes as number) ?? 0,
+        comments: (m.comments as number) ?? 0,
+        shares: (m.shares as number) ?? 0,
+      })
     }
   }
 

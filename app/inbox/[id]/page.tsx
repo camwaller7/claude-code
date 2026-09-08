@@ -39,12 +39,12 @@ export default async function ConversationPage({ params }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Back button, pinned to the top-left of the page (outside the centered
-          conversation column) so it's always the first thing on the screen. */}
+      {/* Back button, stuck to the top-left of the scroll area so it stays in
+          view no matter how far down a long message thread you scroll. */}
       <Link
         href="/inbox"
         aria-label="Back to inbox"
-        className="flex h-10 w-10 items-center justify-center rounded-full border bg-background text-foreground hover:bg-accent transition-colors"
+        className="sticky top-0 z-20 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border bg-background/90 text-foreground shadow-sm backdrop-blur hover:bg-accent transition-colors"
       >
         <ArrowLeft className="h-5 w-5" />
       </Link>
