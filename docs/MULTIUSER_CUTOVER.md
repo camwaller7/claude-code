@@ -6,6 +6,31 @@ run in order, some depend on a product decision, and one (billing caps) is a
 correctness-sensitive change. Everything here only affects the multi-user path —
 the single-tenant pilot is unaffected until the flag flips.
 
+## Status (implemented)
+
+All code and migrations for the cutover are in the repo. Migrations split into
+two groups:
+
+- **Additive — safe to apply anytime** (the pilot keeps working; code falls back
+  or fails open if they're absent):
+  - `028_ayrshare_profiles` — per-user Ayrshare publishing profiles.
+  - `032_daily_usage_reservation` — atomic daily-interaction cap (H2).
+  - `033_per_user_settings` — per-user persona/theme (L8).
+  - `034_rate_limits` — DB-backed API rate limiter (M5).
+- **Cutover-only — apply IN ORDER at the moment `MULTIUSER_ENABLED` flips**, never
+  to the live pilot (they enforce `user_id`, which pilot writes don't yet set):
+  - `029_user_id_not_null` → `030_composite_unique_keys` → `031_remove_owner_rls_bypass`.
+
+Publishing: Zernio has no publishing API, so the post portal publishes through
+**Ayrshare** (`lib/platform/ayrshare.ts`) — each user links their own accounts
+via Ayrshare's hosted SSO and posts run under their `profileKey`. The legacy
+direct-Meta/X path remains as the owner's fallback and is now scoped to the
+post's `user_id`. Direct-OAuth connect/callbacks are owner-only in multi-user and
+stamp `user_id`; their legacy DM backfill was removed (Zernio owns messaging).
+
+Required env for Ayrshare: `AYRSHARE_API_KEY` (Business plan), plus
+`AYRSHARE_PRIVATE_KEY` (PEM) and `AYRSHARE_DOMAIN` for the hosted SSO link.
+
 ## Gating decision — legacy Meta/Gmail/X path (audit H7, M9, M12)
 
 The app has **two** ways to connect accounts:
