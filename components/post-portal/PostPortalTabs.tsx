@@ -16,6 +16,19 @@ export interface PlatformMetric {
   shares: number
 }
 
+// A published post shown in the Created tab — from content_metrics (native or
+// Corvelle, synced) or a just-published Corvelle post not yet synced.
+export interface CreatedPost {
+  id: string
+  caption: string
+  platforms: string[]
+  posted_at: string | null
+  status: 'published' | 'partial' | 'failed'
+  perPlatform: PlatformMetric[]
+  source: 'synced' | 'app'
+  publishErrors?: Record<string, string>
+}
+
 const PLATFORM_LABELS: Record<string, string> = {
   instagram: 'Instagram',
   facebook: 'Facebook',
@@ -25,15 +38,12 @@ const PLATFORM_LABELS: Record<string, string> = {
   telegram: 'Telegram',
 }
 
-function statusVariant(status: PostStatus): 'default' | 'secondary' | 'destructive' | 'outline' {
+function statusVariant(status: string): 'default' | 'secondary' | 'destructive' | 'outline' {
   if (status === 'published') return 'default'
   if (status === 'failed') return 'destructive'
   if (status === 'scheduled' || status === 'publishing') return 'secondary'
   return 'outline'
 }
-
-// Posts that have gone out (or tried to) vs. posts still ahead.
-const POSTED_STATUSES = new Set<string>(['published', 'partial', 'failed'])
 
 function PlatformChips({ platforms }: { platforms: string[] }) {
   return (
@@ -71,10 +81,9 @@ function StatRow({ metric, label, strong }: { metric: Omit<PlatformMetric, 'plat
   )
 }
 
-// Per-platform key stats plus an overall total across platforms. Metrics come
-// from the analytics sync, so a just-published post shows a "coming soon" hint.
-function Performance({ perPlatform }: { perPlatform: PlatformMetric[] | undefined }) {
-  if (!perPlatform || perPlatform.length === 0) {
+// Per-platform key stats plus an overall total across platforms.
+function Performance({ perPlatform }: { perPlatform: PlatformMetric[] }) {
+  if (perPlatform.length === 0) {
     return (
       <p className="mt-3 border-t pt-3 text-xs text-muted-foreground">
         Performance data will appear here once it syncs (refreshes when you log in, and daily).
@@ -92,8 +101,8 @@ function Performance({ perPlatform }: { perPlatform: PlatformMetric[] | undefine
   )
   return (
     <div className="mt-3 border-t pt-2">
-      {perPlatform.map((m) => (
-        <StatRow key={m.platform} metric={m} label={PLATFORM_LABELS[m.platform] ?? m.platform} />
+      {perPlatform.map((m, i) => (
+        <StatRow key={`${m.platform}-${i}`} metric={m} label={PLATFORM_LABELS[m.platform] ?? m.platform} />
       ))}
       {perPlatform.length > 1 && (
         <div className="mt-1 border-t pt-1">
@@ -105,38 +114,13 @@ function Performance({ perPlatform }: { perPlatform: PlatformMetric[] | undefine
 }
 
 export function PostPortalTabs({
-  posts,
-  metricsById,
+  scheduled,
+  created,
 }: {
-  posts: Post[]
-  metricsById: Record<string, PlatformMetric[]>
+  scheduled: Post[]
+  created: CreatedPost[]
 }) {
   const [tab, setTab] = useState<'scheduled' | 'created'>('scheduled')
-
-  const scheduled = posts.filter((p) => !POSTED_STATUSES.has(p.status as string))
-  const created = posts.filter((p) => POSTED_STATUSES.has(p.status as string))
-  const list = tab === 'scheduled' ? scheduled : created
-
-  // Collect a post's per-platform metrics across whatever post ids it carries,
-  // summing if the same platform appears under more than one id.
-  function metricsFor(post: Post): PlatformMetric[] | undefined {
-    const ids = post.platform_post_ids ? Object.values(post.platform_post_ids) : []
-    const byPlatform = new Map<string, PlatformMetric>()
-    for (const id of ids) {
-      for (const m of (id ? metricsById[id as string] : undefined) ?? []) {
-        const cur = byPlatform.get(m.platform)
-        if (cur) {
-          cur.views += m.views
-          cur.likes += m.likes
-          cur.comments += m.comments
-          cur.shares += m.shares
-        } else {
-          byPlatform.set(m.platform, { ...m })
-        }
-      }
-    }
-    return byPlatform.size > 0 ? Array.from(byPlatform.values()) : undefined
-  }
 
   const tabs = [
     { key: 'scheduled' as const, label: 'Scheduled', icon: CalendarClock, count: scheduled.length },
@@ -162,54 +146,73 @@ export function PostPortalTabs({
         ))}
       </div>
 
-      {list.length === 0 ? (
+      {tab === 'scheduled' ? (
+        scheduled.length === 0 ? (
+          <div className="pt-6">
+            <EmptyState
+              icon={Send}
+              title="Nothing scheduled"
+              description="Drafts and scheduled posts show here with their time and platforms. Create one with the button above."
+            />
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {scheduled.map((post) => (
+              <div key={post.id} className="rounded-lg border bg-card p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium line-clamp-1">{post.caption}</p>
+                    <PlatformChips platforms={post.platforms ?? []} />
+                  </div>
+                  <div className="flex shrink-0 items-center gap-3">
+                    {post.scheduled_at && (
+                      <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <CalendarClock className="h-3.5 w-3.5" />
+                        {formatDate(post.scheduled_at, { withTime: true })}
+                      </span>
+                    )}
+                    <Badge variant={statusVariant(post.status)}>{post.status}</Badge>
+                    <PublishNowButton postId={post.id} status={post.status as PostStatus} />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      ) : created.length === 0 ? (
         <div className="pt-6">
           <EmptyState
-            icon={tab === 'scheduled' ? Send : CheckCircle2}
-            title={tab === 'scheduled' ? 'Nothing scheduled' : 'Nothing created yet'}
-            description={
-              tab === 'scheduled'
-                ? 'Drafts and scheduled posts show here with their time and platforms. Create one with the button above.'
-                : 'Once a post publishes it lands here, with a per-platform performance breakdown.'
-            }
+            icon={CheckCircle2}
+            title="Nothing created yet"
+            description="Posts you publish — from Corvelle or straight from the app — land here with a per-platform performance breakdown."
           />
         </div>
       ) : (
         <div className="flex flex-col gap-2">
-          {list.map((post) => (
+          {created.map((post) => (
             <div key={post.id} className="rounded-lg border bg-card p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium line-clamp-1">{post.caption}</p>
-                  <PlatformChips platforms={post.platforms ?? []} />
+                  <p className="text-sm font-medium line-clamp-1">{post.caption || '(no caption)'}</p>
+                  <PlatformChips platforms={post.platforms} />
                 </div>
                 <div className="flex shrink-0 items-center gap-3">
-                  {tab === 'scheduled' && post.scheduled_at && (
-                    <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <CalendarClock className="h-3.5 w-3.5" />
-                      {formatDate(post.scheduled_at, { withTime: true })}
-                    </span>
-                  )}
-                  {tab === 'created' && post.published_at && (
+                  {post.posted_at && (
                     <span className="text-xs text-muted-foreground">
-                      {formatDate(post.published_at, { withTime: true })}
+                      {formatDate(post.posted_at, { withTime: true })}
                     </span>
                   )}
-                  <Badge variant={statusVariant(post.status as PostStatus)}>{post.status}</Badge>
-                  {tab === 'scheduled' && (
-                    <PublishNowButton postId={post.id} status={post.status as PostStatus} />
-                  )}
+                  <Badge variant={statusVariant(post.status)}>{post.status}</Badge>
                 </div>
               </div>
-              {tab === 'created' && post.status === 'published' && (
-                <Performance perPlatform={metricsFor(post)} />
-              )}
-              {tab === 'created' && post.status === 'failed' && post.publish_errors && (
+              {post.status === 'failed' && post.publishErrors ? (
                 <p className="mt-3 border-t pt-3 text-xs text-destructive">
-                  {Object.entries(post.publish_errors as Record<string, string>)
+                  {Object.entries(post.publishErrors)
                     .map(([pl, err]) => `${PLATFORM_LABELS[pl] ?? pl}: ${err}`)
                     .join(' · ')}
                 </p>
+              ) : (
+                <Performance perPlatform={post.perPlatform} />
               )}
             </div>
           ))}
