@@ -41,15 +41,37 @@ function totalViewModel(a: ContentAnalytics): ViewModel {
     netChange7d: a.followers.net_change_7d,
     netChange30d: a.followers.net_change_30d,
     trend: a.followers.trend_30d.map(p => ({ day: toDay(p.date), followers: p.total })),
-    views: a.last7days.views,
-    interactions: a.last7days.interactions,
-    postsPublished: a.last7days.posts_published,
-    avgEngagement: a.last7days.avg_engagement_rate,
+    views: a.last30days.views,
+    interactions: a.last30days.interactions,
+    postsPublished: a.last30days.posts_published,
+    avgEngagement: a.last30days.avg_engagement_rate,
     bestHour: a.breakdown.best_posting_hours[0]?.hour ?? null,
     topPost: a.top_post,
     byMediaType: a.breakdown.by_media_type,
     scopeLabel: 'All platforms',
     byPlatformFooter: a.followers.byPlatform,
+  }
+}
+
+// Content platforms the portal can post to — always offered as tabs so a
+// creator can select any platform, even before it has synced any data.
+const CONTENT_PLATFORMS = ['instagram', 'facebook', 'x', 'threads', 'tiktok']
+
+// A zeroed view for a platform with no analytics yet, so its tab still works.
+function zeroViewModel(platform: string): ViewModel {
+  return {
+    followersCurrent: 0,
+    netChange7d: 0,
+    netChange30d: 0,
+    trend: [],
+    views: 0,
+    interactions: 0,
+    postsPublished: 0,
+    avgEngagement: 0,
+    bestHour: null,
+    topPost: null,
+    byMediaType: {},
+    scopeLabel: PLATFORM_LABELS[platform] ?? platform,
   }
 }
 
@@ -59,10 +81,10 @@ function platformViewModel(p: PlatformAnalytics): ViewModel {
     netChange7d: p.followers.net_change_7d,
     netChange30d: p.followers.net_change_30d,
     trend: p.followers.trend_30d.map(s => ({ day: toDay(s.date), followers: s.followers })),
-    views: p.last7days.views,
-    interactions: p.last7days.interactions,
-    postsPublished: p.last7days.posts_published,
-    avgEngagement: p.last7days.avg_engagement_rate,
+    views: p.last30days.views,
+    interactions: p.last30days.interactions,
+    postsPublished: p.last30days.posts_published,
+    avgEngagement: p.last30days.avg_engagement_rate,
     bestHour: p.best_posting_hours[0]?.hour ?? null,
     topPost: p.top_post,
     byMediaType: p.by_media_type,
@@ -187,11 +209,19 @@ function GrowthAndTop({ vm }: { vm: ViewModel }) {
 export function AudiencePanel({ analytics }: { analytics: ContentAnalytics }) {
   const [tab, setTab] = useState<string>('all')
 
-  const platformTabs = analytics.platforms.filter(p => p.followers.current > 0 || p.last30days.posts_published > 0)
+  const byPlatform = new Map(analytics.platforms.map(p => [p.platform, p]))
+  // Show every content platform as a tab (plus any that have data but aren't in
+  // the standard list), so all platforms are always selectable here.
+  const platformOrder = [
+    ...CONTENT_PLATFORMS,
+    ...analytics.platforms.map(p => p.platform).filter(p => !CONTENT_PLATFORMS.includes(p)),
+  ]
   const active: ViewModel =
     tab === 'all'
       ? totalViewModel(analytics)
-      : platformViewModel(platformTabs.find(p => p.platform === tab) ?? platformTabs[0])
+      : byPlatform.has(tab)
+        ? platformViewModel(byPlatform.get(tab)!)
+        : zeroViewModel(tab)
 
   return (
     <div className="flex flex-col gap-4">
@@ -210,13 +240,13 @@ export function AudiencePanel({ analytics }: { analytics: ContentAnalytics }) {
           <Globe className="h-3.5 w-3.5" />
           All Platforms
         </button>
-        {platformTabs.map(p => (
+        {platformOrder.map(platform => (
           <button
-            key={p.platform}
-            onClick={() => setTab(p.platform)}
-            className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${tab === p.platform ? 'bg-[var(--brand-accent)] text-white' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
+            key={platform}
+            onClick={() => setTab(platform)}
+            className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${tab === platform ? 'bg-[var(--brand-accent)] text-white' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
           >
-            {PLATFORM_LABELS[p.platform] ?? p.platform}
+            {PLATFORM_LABELS[platform] ?? platform}
           </button>
         ))}
       </div>

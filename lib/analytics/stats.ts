@@ -64,6 +64,12 @@ export interface ContentAnalytics {
     posts_published: number
     avg_engagement_rate: number
   }
+  last30days: {
+    views: number
+    interactions: number
+    posts_published: number
+    avg_engagement_rate: number
+  }
   top_post: PostPerformance | null
   worst_post: PostPerformance | null
   posts: PostPerformance[]
@@ -140,6 +146,7 @@ function bestHours(posts: PostPerformance[]) {
 export async function getContentAnalytics(userId?: string | null): Promise<ContentAnalytics> {
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86400_000).toISOString().slice(0, 10)
   const sevenDaysAgoTs = new Date(Date.now() - 7 * 86400_000).toISOString()
+  const thirtyDaysAgoTs = new Date(Date.now() - 30 * 86400_000).toISOString()
 
   // Scope to one user's rows in multi-user mode; unscoped in the pilot.
   let snapsQuery = adminSupabase
@@ -219,6 +226,8 @@ export async function getContentAnalytics(userId?: string | null): Promise<Conte
   const totalViews7d = recent.reduce((s, p) => s + p.views, 0)
   const totalInteractions7d = recent.reduce((s, p) => s + p.interactions, 0)
 
+  const recent30 = posts.filter(p => p.posted_at >= thirtyDaysAgoTs)
+
   // ---- per-platform slices ----
   const platformNames = new Set<string>()
   for (const s of snaps ?? []) platformNames.add(s.platform)
@@ -254,6 +263,14 @@ export async function getContentAnalytics(userId?: string | null): Promise<Conte
       posts_published: recent.length,
       avg_engagement_rate: recent.length
         ? +(recent.reduce((s, p) => s + p.engagement_rate, 0) / recent.length).toFixed(2)
+        : 0,
+    },
+    last30days: {
+      views: recent30.reduce((s, p) => s + p.views, 0),
+      interactions: recent30.reduce((s, p) => s + p.interactions, 0),
+      posts_published: recent30.length,
+      avg_engagement_rate: recent30.length
+        ? +(recent30.reduce((s, p) => s + p.engagement_rate, 0) / recent30.length).toFixed(2)
         : 0,
     },
     top_post: scored[0] ?? null,
