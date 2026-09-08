@@ -6,6 +6,7 @@ import { getContentAnalytics } from '@/lib/analytics/stats'
 import { getReminders } from '@/lib/reminders/engine'
 import { auditLog } from '@/lib/audit/log'
 import { getLLMSettings, logTokenUsage } from '@/lib/llm/settings'
+import { getPersonaTheme } from '@/lib/settings/userSettings'
 import { llmComplete } from '@/lib/llm/client'
 import { checkAIBudget } from '@/lib/llm/budget'
 import { scopedUserId, multiUserEnabled } from '@/lib/auth/currentUser'
@@ -353,18 +354,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No message provided' }, { status: 400 })
   }
 
-  const [{ data: settings }, llm] = await Promise.all([
-    adminSupabase
-      .from('settings')
-      .select('assistant_name, assistant_emoji, assistant_vibe')
-      .eq('id', 1)
-      .single(),
+  const [persona, llm] = await Promise.all([
+    getPersonaTheme(await scopedUserId()),
     getLLMSettings(),
   ])
   const system = buildSystem(
-    settings?.assistant_name ?? 'Elle',
-    settings?.assistant_emoji ?? '✨',
-    settings?.assistant_vibe ?? 'friendly'
+    persona.assistant_name,
+    persona.assistant_emoji,
+    persona.assistant_vibe
   )
 
   const keyByProvider: Record<string, string | undefined> = {

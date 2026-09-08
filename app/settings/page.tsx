@@ -10,18 +10,19 @@ import { AuditLogPanel } from '@/components/settings/AuditLogPanel'
 import { AccountPanel } from '@/components/settings/AccountPanel'
 import { ConnectAccounts } from '@/components/settings/ConnectAccounts'
 import { multiUserEnabled, scopedUserId } from '@/lib/auth/currentUser'
+import { getPersonaTheme } from '@/lib/settings/userSettings'
 
 export default async function SettingsPage() {
   await requireAuth()
 
-  const { data: settings } = await adminSupabase
-    .from('settings')
-    .select('*')
-    .eq('id', 1)
-    .single()
-
   // In multi-user mode, show each creator their own connected social accounts.
   const uid = await scopedUserId()
+
+  // Persona + theme are per-user; the LLM provider/model stay global.
+  const [persona, { data: settings }] = await Promise.all([
+    getPersonaTheme(uid),
+    adminSupabase.from('settings').select('llm_provider, llm_model').eq('id', 1).maybeSingle(),
+  ])
   const { data: connectedAccounts } = uid
     ? await adminSupabase.from('zernio_accounts').select('platform, username').eq('user_id', uid)
     : { data: null }
@@ -36,11 +37,11 @@ export default async function SettingsPage() {
       </div>
       <AccountPanel />
       {multiUserEnabled() && <ConnectAccounts connected={connectedAccounts ?? []} />}
-      <LookSettings initialTheme={settings?.brand_theme ?? 'studio'} />
+      <LookSettings initialTheme={persona.brand_theme} />
       <AssistantSettings
-        initialName={settings?.assistant_name ?? 'Elle'}
-        initialEmoji={settings?.assistant_emoji ?? '✨'}
-        initialVibe={settings?.assistant_vibe ?? 'friendly'}
+        initialName={persona.assistant_name}
+        initialEmoji={persona.assistant_emoji}
+        initialVibe={persona.assistant_vibe}
       />
       <LLMSettings
         initialProvider={settings?.llm_provider ?? 'anthropic'}
