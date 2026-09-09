@@ -416,8 +416,8 @@ export async function POST(request: NextRequest) {
     useOpusCredit = !!decision.useOpusCredit
   }
 
-  // Monthly AI spend cap — refuse before spending when the budget is reached.
-  const budget = await checkAIBudget()
+  // Monthly AI spend cap — per user in multi-user mode — refuse before spending.
+  const budget = await checkAIBudget(chatUserId)
   if (budget.over) {
     return new Response(
       "You've reached this month's AI usage limit. It resets at the start of next month — or upgrade your plan for a higher limit.",

@@ -102,7 +102,7 @@ export async function triageMessage(
   // Respect the monthly AI spend cap. Triage runs on every inbound message, so
   // if the budget is spent we skip the LLM call and leave the message
   // uncategorized rather than failing ingest or blowing past the limit.
-  const budget = await checkAIBudget()
+  const budget = await checkAIBudget(userId)
   if (budget.over) {
     return { ...UNCATEGORIZED, reasoning: 'AI budget reached' }
   }

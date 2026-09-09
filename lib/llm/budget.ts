@@ -4,8 +4,13 @@ import { getModel } from '@/lib/llm/models'
 // Month-to-date AI spend guard. Built on the token_usage table (every LLM call
 // is logged there) so it works without any new infrastructure. Enforced before
 // expensive calls so a runaway loop or abusive user can't silently run up the
-// bill. When we move to multi-user, this becomes a per-user/per-plan cap by
-// adding a user_id filter here.
+// bill.
+//
+// The cap applies PER USER in multi-user mode and globally in the single-tenant
+// pilot: callers pass scopedUserId() (the user's id in multi-user, null in the
+// pilot). Passing a userId sums only that user's usage, so one creator can never
+// exhaust the AI budget for everyone else — each is metered against their own
+// month-to-date spend. With no userId the sum is global (pilot behaviour).
 
 // Conservative fallback pricing (per 1k tokens) for models not in our catalog,
 // so an unknown model is never treated as free.
@@ -19,12 +24,15 @@ function monthStartISO(): string {
   return d.toISOString()
 }
 
-// Sum the estimated USD cost of all logged AI usage since the start of the month.
-export async function getMonthlyAICostUsd(): Promise<number> {
-  const { data } = await adminSupabase
+// Sum the estimated USD cost of logged AI usage since the start of the month.
+// Scoped to one user when userId is given; global otherwise (the pilot).
+export async function getMonthlyAICostUsd(userId?: string | null): Promise<number> {
+  let query = adminSupabase
     .from('token_usage')
     .select('model, input_tokens, output_tokens')
     .gte('created_at', monthStartISO())
+  if (userId) query = query.eq('user_id', userId)
+  const { data } = await query
 
   let cost = 0
   for (const r of data ?? []) {
@@ -51,9 +59,10 @@ export interface BudgetStatus {
 
 // Check whether the month-to-date spend has reached the configured cap. Returns
 // { over:false, capUsd:null } (without querying) when no cap is configured.
-export async function checkAIBudget(): Promise<BudgetStatus> {
+// Pass scopedUserId() so the cap is enforced per user in multi-user mode.
+export async function checkAIBudget(userId?: string | null): Promise<BudgetStatus> {
   const capUsd = getMonthlyBudgetUsd()
   if (capUsd === null) return { over: false, costUsd: 0, capUsd: null }
-  const costUsd = await getMonthlyAICostUsd()
+  const costUsd = await getMonthlyAICostUsd(userId)
   return { over: costUsd >= capUsd, costUsd, capUsd }
 }

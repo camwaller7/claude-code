@@ -42,8 +42,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }
   }
 
-  // Spend cap.
-  const budget = await checkAIBudget()
+  // Spend cap — per user in multi-user mode.
+  const budget = await checkAIBudget(userId)
   if (budget.over) {
     return NextResponse.json({ error: "This month's AI usage limit has been reached." }, { status: 200 })
   }
