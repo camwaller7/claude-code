@@ -56,13 +56,23 @@ async function upsertConversation(
   userId: string | null
 ): Promise<string | null> {
   if (!c.id) return null
-  let q = adminSupabase
-    .from('conversations')
-    .select('id, contact_name')
-    .eq('platform', platform)
-    .eq('external_thread_id', c.id)
-  if (userId) q = q.eq('user_id', userId)
-  const { data: existing } = await q.maybeSingle()
+  const participantId = c.participantId ?? null
+
+  // Match an existing thread by the participant first — that's the identity the
+  // webhook shares — so backfill lands in the SAME row the webhook created
+  // instead of a duplicate. Fall back to the thread id (a prior backfill row).
+  const findBy = async (col: 'participant_id' | 'external_thread_id', val: string) => {
+    let q = adminSupabase
+      .from('conversations')
+      .select('id, contact_name, participant_id')
+      .eq('platform', platform)
+      .eq(col, val)
+    if (userId) q = q.eq('user_id', userId)
+    return (await q.maybeSingle()).data
+  }
+
+  let existing = participantId ? await findBy('participant_id', participantId) : null
+  if (!existing) existing = await findBy('external_thread_id', c.id)
 
   const name = c.participantName || c.participantId || 'Unknown'
   const lastAt = c.updatedTime ?? new Date().toISOString()
@@ -70,6 +80,9 @@ async function upsertConversation(
   if (existing) {
     const patch: Record<string, unknown> = { last_message_at: lastAt }
     if (existing.contact_name === 'Unknown' && name !== 'Unknown') patch.contact_name = name
+    // Stamp the participant id on a row that predates it (webhook rows, or an
+    // earlier backfill) so future syncs and webhooks reconcile to it.
+    if (!existing.participant_id && participantId) patch.participant_id = participantId
     await adminSupabase.from('conversations').update(patch).eq('id', existing.id as string)
     return existing.id as string
   }
@@ -79,6 +92,7 @@ async function upsertConversation(
     .insert({
       platform,
       external_thread_id: c.id,
+      participant_id: participantId,
       contact_name: name,
       // No username is exposed by the list endpoint; a later webhook fills the
       // real @handle in. Empty (not the opaque numeric id) keeps the UI clean.

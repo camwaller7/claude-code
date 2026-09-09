@@ -217,25 +217,61 @@ export async function POST(request: NextRequest) {
     const sender = msg.sender
     const name = sender?.name || sender?.username || sender?.id || 'Unknown'
     const handle = sender?.username ? `@${sender.username}` : sender?.id ?? ''
+    // The participant's platform id — the identity shared with the REST inbox
+    // API (participantId). Reconcile on it so a thread the history backfill
+    // already created (keyed by the platform's numeric conversation id) is
+    // reused, not duplicated, when the webhook delivers Zernio's hex _id.
+    const participantId = sender?.id ?? null
 
-    // external_thread_id is Zernio's conversationId so replies can be sent back
-    // via POST /v1/inbox/conversations/{conversationId}/messages.
-    const { data: conv } = await adminSupabase
-      .from('conversations')
-      .upsert(
-        {
-          platform,
-          external_thread_id: msg.conversationId,
-          contact_name: name,
-          contact_handle: handle,
-          status: 'needs_reply',
-          last_message_at: now,
-          ...owner,
-        },
-        { onConflict: conflictTarget.conversation() }
-      )
-      .select()
-      .single()
+    let conv: { id: string } | null = null
+    if (participantId) {
+      let findQ = adminSupabase
+        .from('conversations')
+        .select('id')
+        .eq('platform', platform)
+        .eq('participant_id', participantId)
+      if (userId) findQ = findQ.eq('user_id', userId)
+      const { data: match } = await findQ.maybeSingle()
+      if (match) {
+        // Reuse the existing row. Keep external_thread_id pointed at the webhook's
+        // conversationId (the canonical handle replies are sent through), and
+        // refresh contact info + recency.
+        await adminSupabase
+          .from('conversations')
+          .update({
+            external_thread_id: msg.conversationId,
+            contact_name: name,
+            contact_handle: handle,
+            status: 'needs_reply',
+            last_message_at: now,
+          })
+          .eq('id', match.id as string)
+        conv = { id: match.id as string }
+      }
+    }
+
+    // No participant match — upsert by thread id as before, stamping the
+    // participant id so subsequent events/backfills reconcile to this row.
+    if (!conv) {
+      const { data } = await adminSupabase
+        .from('conversations')
+        .upsert(
+          {
+            platform,
+            external_thread_id: msg.conversationId,
+            participant_id: participantId,
+            contact_name: name,
+            contact_handle: handle,
+            status: 'needs_reply',
+            last_message_at: now,
+            ...owner,
+          },
+          { onConflict: conflictTarget.conversation() }
+        )
+        .select('id')
+        .single()
+      conv = data ? { id: data.id as string } : null
+    }
 
     if (!conv) return NextResponse.json({ received: true }, { status: 200 })
 
