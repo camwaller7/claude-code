@@ -53,7 +53,10 @@ export function LoginForm() {
       const redirectTo = `${appUrl}/auth/callback`
       const { error: authError } = await supabase.auth.signInWithOtp({
         email,
-        options: { emailRedirectTo: redirectTo },
+        // Invite-only: the magic link signs in EXISTING accounts only. New
+        // creators must sign up with an invite code (which creates the account),
+        // so a magic link never silently opens a new account.
+        options: { emailRedirectTo: redirectTo, shouldCreateUser: false },
       })
       if (authError) {
         setError(authError.message)

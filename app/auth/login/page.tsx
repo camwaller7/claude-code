@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import Image from 'next/image'
 import { createServerClient } from '@/lib/supabase/server'
 import { LoginForm } from '@/components/auth/LoginForm'
+import { multiUserEnabled } from '@/lib/auth/currentUser'
 import { CURRENT_TERMS_VERSION } from '@/lib/auth/requireAuth'
 
 type Props = { searchParams: Promise<{ error?: string }> }
@@ -78,9 +79,16 @@ export default async function LoginPage({ searchParams }: Props) {
           <LoginForm />
         </div>
 
-        <p className="text-center text-xs" style={{ color: '#a89d90' }}>
-          First time here? Use a sign-in link to verify your email, then set a password.
-        </p>
+        {multiUserEnabled() ? (
+          <p className="text-center text-xs" style={{ color: '#a89d90' }}>
+            Have an invite code?{' '}
+            <a href="/auth/signup" className="underline">Create your account</a>.
+          </p>
+        ) : (
+          <p className="text-center text-xs" style={{ color: '#a89d90' }}>
+            First time here? Use a sign-in link to verify your email, then set a password.
+          </p>
+        )}
 
         <p className="text-center text-xs" style={{ color: '#a89d90' }}>
           <a href="/privacy" className="underline">Privacy Policy</a>

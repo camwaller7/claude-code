@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { isOwnerEmail } from '@/lib/auth/isOwner'
+import { multiUserEnabled } from '@/lib/auth/currentUser'
 import { AcceptTermsForm } from '@/components/auth/AcceptTermsForm'
 
 export default async function AcceptTermsPage() {
@@ -11,7 +12,8 @@ export default async function AcceptTermsPage() {
     const supabase = await createServerClient()
     const { data } = await supabase.auth.getUser()
     if (data.user) {
-      if (!isOwnerEmail(data.user.email)) redirect('/auth/login?error=forbidden')
+      // Pilot: owner only. Multi-user trial: any invited creator may accept terms.
+      if (!multiUserEnabled() && !isOwnerEmail(data.user.email)) redirect('/auth/login?error=forbidden')
       if (data.user.user_metadata?.has_password !== true) redirect('/auth/set-password')
       hasSession = true
     }

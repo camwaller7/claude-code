@@ -1,27 +1,24 @@
 export const dynamic = 'force-dynamic'
 
 import { redirect } from 'next/navigation'
+import Image from 'next/image'
 import { createServerClient } from '@/lib/supabase/server'
-import { isOwnerEmail } from '@/lib/auth/isOwner'
 import { multiUserEnabled } from '@/lib/auth/currentUser'
-import { SetPasswordForm } from '@/components/auth/SetPasswordForm'
+import { SignupForm } from '@/components/auth/SignupForm'
 
-export default async function SetPasswordPage() {
-  let hasSession = false
-  let isReset = false
+export default async function SignupPage() {
+  // Self-signup exists only in the multi-user trial; in the pilot there's no
+  // public signup, so send visitors to the login page.
+  if (!multiUserEnabled()) redirect('/auth/login')
+
+  // Already signed in? Straight to the app.
   try {
     const supabase = await createServerClient()
     const { data } = await supabase.auth.getUser()
-    if (data.user) {
-      // Pilot: owner only. Multi-user trial: any invited creator may set a password.
-      if (!multiUserEnabled() && !isOwnerEmail(data.user.email)) redirect('/auth/login?error=forbidden')
-      hasSession = true
-      isReset = data.user.user_metadata?.has_password === true
-    }
+    if (data.user) redirect('/dashboard')
   } catch {
-    // fall through
+    // fall through and show the form
   }
-  if (!hasSession) redirect('/auth/login')
 
   return (
     <div
@@ -30,22 +27,15 @@ export default async function SetPasswordPage() {
     >
       <div className="w-full max-w-sm flex flex-col gap-8">
         <div className="text-center flex flex-col gap-3">
-          <span
-            className="mx-auto flex h-14 w-14 items-center justify-center rounded-full text-2xl"
-            style={{ background: '#3f5c50', color: '#f7f2ec' }}
-          >
-            🔒
-          </span>
+          <Image src="/corvelle-icon.png" alt="Corvelle" width={56} height={56} className="mx-auto rounded-2xl" />
           <h1
             className="text-3xl"
             style={{ fontFamily: 'Georgia, "Times New Roman", serif', fontWeight: 500, letterSpacing: '-0.01em' }}
           >
-            {isReset ? 'Reset your password' : 'Secure your account'}
+            Create your account
           </h1>
           <p className="text-sm" style={{ color: '#7d746a', maxWidth: '38ch', margin: '0 auto' }}>
-            {isReset
-              ? "You're verified — choose a new password."
-              : "You're verified — now set a password. You'll use it to sign in from now on."}
+            Enter your invite code to get started. Your inbox, brand deals, clients and content — all in one place.
           </p>
         </div>
 
@@ -53,8 +43,16 @@ export default async function SetPasswordPage() {
           className="rounded-3xl p-8"
           style={{ background: '#fffdf9', border: '1px solid #e9dfd2', boxShadow: '0 2px 24px rgba(46, 38, 33, 0.06)' }}
         >
-          <SetPasswordForm isReset={isReset} />
+          <SignupForm />
         </div>
+
+        <p className="text-center text-xs" style={{ color: '#a89d90' }}>
+          <a href="/privacy" className="underline">Privacy Policy</a>
+          {' · '}
+          <a href="/terms" className="underline">Terms of Service</a>
+          {' · '}
+          <a href="/data-deletion" className="underline">Data Deletion</a>
+        </p>
       </div>
     </div>
   )
