@@ -4,6 +4,7 @@ import { adminSupabase } from '@/lib/supabase/admin'
 import { triageMessage, importantFromTriage } from '@/lib/anthropic/triage'
 import { buildAttachmentRefreshUrl } from '@/lib/platform/zernio'
 import { multiUserEnabled } from '@/lib/auth/currentUser'
+import { getOwnerUserId } from '@/lib/auth/ownerUser'
 import { conflictTarget } from '@/lib/db/conflictTargets'
 import type { Platform } from '@/types'
 
@@ -32,16 +33,25 @@ interface ZernioMessageEvent {
   account?: { id: string; accountId?: string; platform?: string; username?: string }
 }
 
-// Resolve the app user that owns a Zernio account. Returns null when multi-user
-// is off (single-tenant: rows carry no user_id) or the account isn't mapped yet.
+// Resolve the app user that owns a Zernio account. Null in the single-tenant
+// pilot (rows carry no user_id). In multi-user, a connected account maps to its
+// owning user via zernio_accounts; an UNMAPPED account (e.g. the owner's legacy
+// pilot accounts, connected before that table existed) falls back to the app
+// owner so inbound is never written unowned — which would violate the
+// post-cutover NOT NULL and drop the message. Trial creators always map to their
+// own user through the connect flow, so this fallback only ever catches the
+// owner's own accounts and never crosses tenants.
 async function resolveOwningUserId(accountId?: string): Promise<string | null> {
-  if (!multiUserEnabled() || !accountId) return null
-  const { data } = await adminSupabase
-    .from('zernio_accounts')
-    .select('user_id')
-    .eq('zernio_account_id', accountId)
-    .maybeSingle()
-  return (data?.user_id as string | undefined) ?? null
+  if (!multiUserEnabled()) return null
+  if (accountId) {
+    const { data } = await adminSupabase
+      .from('zernio_accounts')
+      .select('user_id')
+      .eq('zernio_account_id', accountId)
+      .maybeSingle()
+    if (data?.user_id) return data.user_id as string
+  }
+  return await getOwnerUserId()
 }
 
 // Verify the Zernio webhook signature (audit C5 — now fails CLOSED).
