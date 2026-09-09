@@ -1,4 +1,5 @@
 import { adminSupabase } from '@/lib/supabase/admin'
+import { trialModeEnabled, trialTier } from '@/lib/flags'
 
 // Subscription state for a user, read from the subscriptions table (written by
 // the Stripe webhook). Absence of a row means no paid plan.
@@ -25,12 +26,14 @@ export async function getUserSubscription(userId: string): Promise<Subscription 
   return (data as Subscription | null) ?? null
 }
 
-// The user's active tier, or 'starter' as the safe floor when there's no active
-// subscription. Callers gate access separately via hasActivePlan.
+// The user's active tier. A paid subscription wins. Otherwise, during the comped
+// trial every user gets the trial tier (full access); outside the trial the safe
+// floor is 'starter'. Callers gate access separately via hasActivePlan.
 export async function getUserTier(userId: string): Promise<string> {
   const sub = await getUserSubscription(userId)
-  if (!sub) return 'starter'
-  return sub.tier ?? 'starter'
+  if (sub) return sub.tier ?? 'starter'
+  if (trialModeEnabled()) return trialTier()
+  return 'starter'
 }
 
 // Whether the user has an entitlement to the paid product right now. past_due is

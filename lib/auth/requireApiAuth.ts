@@ -4,6 +4,7 @@ import { createServerClient } from '@/lib/supabase/server'
 import { isOwnerEmail } from '@/lib/auth/isOwner'
 import { multiUserEnabled } from '@/lib/auth/currentUser'
 import { billingEnabled } from '@/lib/stripe/client'
+import { trialModeEnabled } from '@/lib/flags'
 import { hasActivePlan } from '@/lib/billing/subscription'
 
 // Paths reachable without an active subscription, so a user can actually
@@ -85,7 +86,7 @@ export async function requireApiAuth(request?: Request): Promise<NextResponse | 
         }
         // Multi-user paywall: non-owner users need an active subscription to
         // reach data/AI endpoints. Billing/connect paths stay reachable.
-        if (billingEnabled()) {
+        if (billingEnabled() && !trialModeEnabled()) {
           const exempt = PLAN_EXEMPT_PREFIXES.some(p => path.startsWith(p))
           if (!exempt && !(await hasActivePlan(user.id))) {
             return NextResponse.json({ error: 'Subscription required' }, { status: 402 })

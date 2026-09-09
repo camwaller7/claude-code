@@ -3,6 +3,7 @@ import { createServerClient } from '@/lib/supabase/server'
 import { isOwnerEmail } from '@/lib/auth/isOwner'
 import { multiUserEnabled } from '@/lib/auth/currentUser'
 import { billingEnabled } from '@/lib/stripe/client'
+import { trialModeEnabled } from '@/lib/flags'
 import { hasActivePlan } from '@/lib/billing/subscription'
 import { auditLog } from '@/lib/audit/log'
 import type { Session } from '@supabase/supabase-js'
@@ -62,6 +63,7 @@ if (forbidden) redirect('/auth/login?error=forbidden')
     opts?.subscription !== false &&
     multiUserEnabled() &&
     billingEnabled() &&
+    !trialModeEnabled() &&
     !isOwnerEmail(session.user.email)
   ) {
     const active = await hasActivePlan(session.user.id).catch(() => false)
