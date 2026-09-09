@@ -5,6 +5,7 @@ import { requireAuth } from '@/lib/auth/requireAuth'
 import { scopedUserId } from '@/lib/auth/currentUser'
 import { ConversationList } from '@/components/inbox/ConversationList'
 import { InboxFilters } from '@/components/inbox/InboxFilters'
+import { SyncHistoryButton } from '@/components/inbox/SyncHistoryButton'
 import { RealtimeInbox } from '@/components/inbox/RealtimeInbox'
 import { Suspense } from 'react'
 import { Inbox, Search } from 'lucide-react'
@@ -45,9 +46,12 @@ export default async function InboxPage({ searchParams }: Props) {
   return (
     <div>
       <RealtimeInbox />
-      <div className="mb-4">
-        <h1 className="text-2xl font-bold">Inbox</h1>
-        <p className="text-sm text-muted-foreground">Every conversation, one place.</p>
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">Inbox</h1>
+          <p className="text-sm text-muted-foreground">Every conversation, one place.</p>
+        </div>
+        <SyncHistoryButton />
       </div>
       <Suspense>
         <InboxFilters />

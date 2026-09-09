@@ -139,6 +139,119 @@ export function sendZernioMessage(conversationId: string, accountId: string, mes
   )
 }
 
+// ─── Inbox history (backfill) ─────────────────────────────────────────────────
+// Unlike the webhook (which only delivers events from the moment it's wired),
+// these endpoints return the FULL conversation + message history Zernio holds,
+// so we can backfill everything a creator had before connecting — nothing gets
+// missed. Both are paginated with an opaque cursor.
+
+// zernioFetch unwraps a top-level { data } envelope, which would drop the
+// sibling `pagination` block the inbox-list endpoint returns. This variant
+// returns the parsed body verbatim so callers see both `data` and `pagination`.
+async function zernioFetchRaw<T>(path: string): Promise<ZernioResult<T>> {
+  const apiKey = process.env.ZERNIO_API_KEY
+  if (!apiKey) return { ok: false, status: 0, error: 'ZERNIO_API_KEY not set' }
+  const res = await fetch(`${ZERNIO_BASE}${path}`, {
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+  })
+  const raw = await res.text()
+  let parsed: unknown = undefined
+  try { parsed = raw ? JSON.parse(raw) : undefined } catch { /* non-JSON */ }
+  if (!res.ok) {
+    const errMsg = (parsed as { error?: string })?.error ?? `Zernio API returned ${res.status}`
+    return { ok: false, status: res.status, error: errMsg }
+  }
+  return { ok: true, status: res.status, data: parsed as T }
+}
+
+export interface ZernioInboxConversation {
+  id?: string
+  platform?: string
+  accountId?: string
+  accountUsername?: string
+  participantId?: string
+  participantName?: string
+  lastMessage?: string
+  updatedTime?: string
+  status?: 'active' | 'archived'
+}
+
+export interface ZernioInboxAttachment {
+  type?: string
+  originalType?: string
+  url?: string
+  // IG/FB `url` is a signed Meta CDN link that EXPIRES. `refreshUrl` (a zernio.com
+  // endpoint) re-mints it on every request and is safe to store — always prefer it.
+  refreshUrl?: string | null
+}
+
+export interface ZernioInboxMessage {
+  id?: string
+  conversationId?: string
+  accountId?: string
+  platform?: string
+  message?: string
+  senderName?: string | null
+  direction?: 'incoming' | 'outgoing'
+  createdAt?: string
+  attachments?: ZernioInboxAttachment[]
+}
+
+interface Paginated<T> {
+  data?: T[]
+  messages?: T[]
+  pagination?: { hasMore?: boolean; nextCursor?: string | null }
+}
+
+// One page of conversations. Pass accountId to scope to a single connected
+// account — required so multi-user backfill stays partitioned per creator.
+export function listInboxConversations(opts: { accountId?: string; cursor?: string; limit?: number }) {
+  const q = new URLSearchParams()
+  if (opts.accountId) q.set('accountId', opts.accountId)
+  if (opts.cursor) q.set('cursor', opts.cursor)
+  q.set('limit', String(opts.limit ?? 100))
+  return zernioFetchRaw<Paginated<ZernioInboxConversation>>(`/v1/inbox/conversations?${q.toString()}`)
+}
+
+// One page of messages for a conversation. accountId is required by Zernio.
+export function getInboxMessages(conversationId: string, accountId: string, opts?: { cursor?: string; limit?: number }) {
+  const q = new URLSearchParams({ accountId })
+  if (opts?.cursor) q.set('cursor', opts.cursor)
+  q.set('limit', String(opts?.limit ?? 100))
+  q.set('sortOrder', 'asc')
+  return zernioFetchRaw<Paginated<ZernioInboxMessage>>(
+    `/v1/inbox/conversations/${encodeURIComponent(conversationId)}/messages?${q.toString()}`
+  )
+}
+
+// The origin of the Zernio API (e.g. https://zernio.com), for absolutising a
+// relative refreshUrl. The /api/media proxy only accepts zernio.com hosts.
+function zernioOrigin(): string {
+  try { return new URL(ZERNIO_BASE).origin } catch { return 'https://zernio.com' }
+}
+
+// The URL to STORE for an attachment. Prefer the durable refreshUrl (re-minted
+// server-side, routed through /api/media) over the expiring signed CDN url.
+export function attachmentStoreUrl(a: ZernioInboxAttachment): string {
+  const r = a.refreshUrl
+  if (r) return r.startsWith('http') ? r : `${zernioOrigin()}${r}`
+  return a.url ?? ''
+}
+
+// Webhook attachments carry NO refreshUrl — Zernio documents that it must be
+// built from the resolve endpoint. conversationId + messageId + the attachment's
+// zero-based index + the receiving accountId reconstruct a durable, re-mintable
+// url on zernio.com (so it survives the Meta CDN signature expiring).
+export function buildAttachmentRefreshUrl(
+  conversationId: string,
+  messageId: string,
+  index: number,
+  accountId: string
+): string {
+  const q = new URLSearchParams({ accountId })
+  return `${ZERNIO_BASE}/v1/inbox/conversations/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}/attachments/${index}?${q.toString()}`
+}
+
 // ─── Publishing ───────────────────────────────────────────────────────────────
 // Zernio's Posts API publishes to the same connected accounts we already use for
 // the inbox (POST /v1/posts). This is what powers the post portal — no separate

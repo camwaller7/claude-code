@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { adminSupabase } from '@/lib/supabase/admin'
 import { triageMessage, importantFromTriage } from '@/lib/anthropic/triage'
+import { buildAttachmentRefreshUrl } from '@/lib/platform/zernio'
 import { multiUserEnabled } from '@/lib/auth/currentUser'
 import { conflictTarget } from '@/lib/db/conflictTargets'
 import type { Platform } from '@/types'
@@ -127,8 +128,22 @@ export async function POST(request: NextRequest) {
     // Normalise attachments (images/videos/voice notes/shared posts) for storage
     // so the thread can render them. Only set the column when there are any, so
     // the write stays safe before migration 025 adds the column.
+    //
+    // Webhook attachment `url`s are signed Meta CDN links that EXPIRE and carry
+    // no refreshUrl, so storing them directly is why media stopped rendering.
+    // Reconstruct the durable resolve endpoint (a zernio.com url the /api/media
+    // proxy re-mints) from conversationId + messageId + index + accountId; only
+    // that survives the CDN signature expiring. Fall back to the raw url if we
+    // can't build one (missing account/message id).
+    const acctId = payload.account?.id ?? payload.account?.accountId
+    const messageId = msg.platformMessageId || msg.id
     const attachments = (msg.attachments ?? [])
-      .map(a => ({ type: (a.type ?? a.originalType ?? 'file'), url: a.url }))
+      .map((a, i) => ({
+        type: a.type ?? a.originalType ?? 'file',
+        url: acctId && messageId
+          ? buildAttachmentRefreshUrl(msg.conversationId, messageId, i, acctId)
+          : a.url,
+      }))
       .filter(a => a.url)
     const media = attachments.length ? { attachments } : {}
     if (multiUserEnabled() && !userId) {
