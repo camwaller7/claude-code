@@ -18,6 +18,30 @@ interface SendResult {
   error?: string
 }
 
+// Turn raw platform/Zernio send errors into something a creator can act on.
+// Meta's cryptic codes (e.g. "(#3) Application does not have the capability…")
+// mean a permission wasn't granted on the connected account — not a bug in the
+// app — so tell them to reconnect with messaging enabled. Unknown errors pass
+// through unchanged.
+function friendlyMessagingError(raw: string | undefined, platform: string): string {
+  const msg = raw ?? 'Message was not sent'
+  const label = platform === 'instagram' ? 'Instagram' : platform === 'facebook' ? 'Facebook' : platform
+  const lower = msg.toLowerCase()
+  // #3 capability / #10 permission / "permission" / "not authorized" → messaging
+  // scope missing on the connection.
+  if (
+    lower.includes('does not have the capability') ||
+    lower.includes('(#3)') ||
+    lower.includes('(#10)') ||
+    lower.includes('permission') ||
+    lower.includes('not authorized') ||
+    lower.includes('cannot message users')
+  ) {
+    return `${label} hasn't granted permission to send messages from this account. Reconnect it in Settings and allow messaging when prompted. If it still fails after reconnecting, messaging may need to be enabled for this account by support.`
+  }
+  return msg
+}
+
 async function sendReply(conv: Record<string, unknown>, body: string): Promise<SendResult> {
   const platform = conv.platform as string
 
@@ -48,7 +72,7 @@ async function sendReply(conv: Record<string, unknown>, body: string): Promise<S
       const r = await sendZernioMessage(conv.external_thread_id as string, accountId, body)
       return r.ok
         ? { ok: true, status: 'sent' }
-        : { ok: false, status: 'failed', error: r.error ?? 'Zernio send failed' }
+        : { ok: false, status: 'failed', error: friendlyMessagingError(r.error, platform) }
     }
 
     // Meta requires an inbound message within the last 24h (or an approved
@@ -179,7 +203,7 @@ async function sendReply(conv: Record<string, unknown>, body: string): Promise<S
         '| payload:', JSON.stringify(sendPayload),
         '| raw:', rawResponse
       )
-      return { ok: false, status: 'failed', error: data.error?.message ?? `Graph API returned ${res.status}` }
+      return { ok: false, status: 'failed', error: friendlyMessagingError(data.error?.message ?? `Graph API returned ${res.status}`, platform) }
     }
     return { ok: true, status: 'sent' }
   }
