@@ -9,8 +9,10 @@ import { TokenUsagePanel } from '@/components/settings/TokenUsagePanel'
 import { AuditLogPanel } from '@/components/settings/AuditLogPanel'
 import { AccountPanel } from '@/components/settings/AccountPanel'
 import { ConnectAccounts } from '@/components/settings/ConnectAccounts'
+import { NotificationSettings } from '@/components/settings/NotificationSettings'
 import { multiUserEnabled, scopedUserId } from '@/lib/auth/currentUser'
 import { getPersonaTheme } from '@/lib/settings/userSettings'
+import { getNotifyChannel } from '@/lib/notifications/notify'
 
 export default async function SettingsPage() {
   await requireAuth()
@@ -19,8 +21,9 @@ export default async function SettingsPage() {
   const uid = await scopedUserId()
 
   // Persona + theme are per-user; the LLM provider/model stay global.
-  const [persona, { data: settings }] = await Promise.all([
+  const [persona, notifyChannel, { data: settings }] = await Promise.all([
     getPersonaTheme(uid),
+    getNotifyChannel(uid),
     adminSupabase.from('settings').select('llm_provider, llm_model').eq('id', 1).maybeSingle(),
   ])
   const { data: connectedAccounts } = uid
@@ -37,6 +40,7 @@ export default async function SettingsPage() {
       </div>
       <AccountPanel />
       {multiUserEnabled() && <ConnectAccounts connected={connectedAccounts ?? []} />}
+      <NotificationSettings initialChannel={notifyChannel} />
       <LookSettings initialTheme={persona.brand_theme} />
       <AssistantSettings
         initialName={persona.assistant_name}

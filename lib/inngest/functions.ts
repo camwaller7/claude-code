@@ -10,6 +10,7 @@ import {
   toZernioPlatformName,
   resolveZernioAccountId,
 } from '@/lib/platform/zernio'
+import { createNotification } from '@/lib/notifications/notify'
 import type { Platform } from '@/types'
 
 // ─── Inbox sync (runs every 15 min) ──────────────────────────────────────────
@@ -392,6 +393,40 @@ export const publishPost = inngest.createFunction(
       if (allFailed) {
         console.error(`[publishPost] post ${postId} failed on every platform`)
       }
+    })
+
+    // Notify the creator that the post went live. Runs in its own step so
+    // Inngest memoises it — a retry of a later step won't re-send. Instagram
+    // gets the audio reminder: Meta only allows adding a song in the IG app, so
+    // it must be done after publishing, and this alert is the prompt to do it.
+    await step.run('notify-published', async () => {
+      const succeeded = results.filter((r) => r.success).map((r) => r.platform)
+      if (succeeded.length === 0) return
+      const ownerId = (post.user_id as string | null) ?? null
+      const igLive = succeeded.includes('instagram')
+      const platformNames = succeeded
+        .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+        .join(', ')
+
+      const body = igLive
+        ? `Live on ${platformNames}. 🎵 Instagram audio must be added after publishing — open the post in the Instagram app to add a trending song. We sent this the moment it went live so you don't miss it.`
+        : `Live on ${platformNames}.`
+
+      await createNotification({
+        userId: ownerId,
+        type: 'post_published',
+        title: igLive ? 'Your post is live — add your Instagram song 🎵' : 'Your post is live 🎉',
+        body,
+        href: '/post-portal',
+        meta: { postId, platforms: succeeded, instagram: igLive },
+        emailLines: igLive
+          ? [
+              `Your post is now live on <strong>${platformNames}</strong>.`,
+              `🎵 <strong>Add your Instagram audio now.</strong> Songs can only be added inside the Instagram app after a post is published, so open the post in Instagram and add a trending track to boost engagement.`,
+              `We emailed you the moment it went live so the song doesn't get missed.`,
+            ]
+          : [`Your post is now live on <strong>${platformNames}</strong>.`],
+      })
     })
 
     return { results }
