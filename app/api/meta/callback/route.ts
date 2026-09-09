@@ -6,10 +6,18 @@ import { requireApiAuth } from '@/lib/auth/requireApiAuth'
 import { getCurrentUserId } from '@/lib/auth/currentUser'
 import { encryptToken } from '@/lib/crypto/tokenCipher'
 import { META_GRAPH_VERSION } from '@/lib/platform/metaVersion'
+import { zernioEnabled } from '@/lib/platform/zernio'
 
 export async function GET(request: NextRequest) {
   const unauthorized = await requireApiAuth(request)
   if (unauthorized) return unauthorized
+
+  // Trial guard: the direct Meta app is not used when Zernio is the provider, so
+  // refuse any (stale/in-flight) direct callback rather than mint a token on our
+  // own unreviewed app. See app/api/meta/connect/route.ts.
+  if (zernioEnabled()) {
+    return NextResponse.redirect(new URL('/settings?error=use_zernio_connect', request.url))
+  }
 
   const { searchParams } = new URL(request.url)
   const code = searchParams.get('code')

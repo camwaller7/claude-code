@@ -2,10 +2,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import { randomBytes } from 'crypto'
 import { cookies } from 'next/headers'
 import { requireApiAuth } from '@/lib/auth/requireApiAuth'
+import { zernioEnabled } from '@/lib/platform/zernio'
 
 export async function GET(request: NextRequest) {
   const unauthorized = await requireApiAuth(request)
   if (unauthorized) return unauthorized
+
+  // Trial guard: Instagram connects through Zernio's reviewed app, not our own.
+  // Disable direct IG OAuth when Zernio is the provider. See app/api/meta/connect.
+  if (zernioEnabled()) {
+    return NextResponse.redirect(new URL('/settings?error=use_zernio_connect', request.url))
+  }
 
   const state = randomBytes(16).toString('hex')
 

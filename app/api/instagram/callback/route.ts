@@ -6,10 +6,17 @@ import { requireApiAuth } from '@/lib/auth/requireApiAuth'
 import { getCurrentUserId } from '@/lib/auth/currentUser'
 import { encryptToken } from '@/lib/crypto/tokenCipher'
 import { inngest } from '@/lib/inngest/client'
+import { zernioEnabled } from '@/lib/platform/zernio'
 
 export async function GET(request: NextRequest) {
   const unauthorized = await requireApiAuth(request)
   if (unauthorized) return unauthorized
+
+  // Trial guard: refuse a stale/in-flight direct IG callback when Zernio is the
+  // provider, so no token is minted on our own unreviewed app.
+  if (zernioEnabled()) {
+    return NextResponse.redirect(new URL('/settings?error=use_zernio_connect', request.url))
+  }
 
   const { searchParams } = new URL(request.url)
   const code = searchParams.get('code')
