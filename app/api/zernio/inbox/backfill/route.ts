@@ -5,10 +5,16 @@ import { multiUserEnabled, getCurrentUserId } from '@/lib/auth/currentUser'
 import { backfillInboxSingleTenant, backfillInboxForUser } from '@/lib/platform/zernioInbox'
 import { adminSupabase } from '@/lib/supabase/admin'
 
-// Pull the full DM history (conversations + messages + media) from Zernio into
-// our inbox. Called by the "Sync history" button (force=1) and once per day on
-// login (debounced) so a creator never has to think about it.
+// Pull the recent DM history (conversations + messages + media) from Zernio into
+// our inbox — the last ~30 days, bounded so it finishes inside the request.
+// Called by the "Sync history" button (force=1) and once per day on login
+// (debounced) so a creator never has to think about it.
 const DEBOUNCE_SECONDS = 86_400 // once per day per user for the auto path
+
+// Give the import room to page through a month of DMs across accounts without
+// hitting the platform's default function timeout (which surfaced as a failed
+// sync). Honoured on Vercel Pro; a no-op elsewhere.
+export const maxDuration = 60
 
 export async function POST(request: Request) {
   const unauthorized = await requireApiAuth(request)

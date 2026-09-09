@@ -205,20 +205,24 @@ interface Paginated<T> {
 
 // One page of conversations. Pass accountId to scope to a single connected
 // account — required so multi-user backfill stays partitioned per creator.
-export function listInboxConversations(opts: { accountId?: string; cursor?: string; limit?: number }) {
+export function listInboxConversations(opts: { accountId?: string; cursor?: string; limit?: number; sortOrder?: 'asc' | 'desc' }) {
   const q = new URLSearchParams()
   if (opts.accountId) q.set('accountId', opts.accountId)
   if (opts.cursor) q.set('cursor', opts.cursor)
   q.set('limit', String(opts.limit ?? 100))
+  // Newest-updated first so a bounded backfill can stop once it crosses the
+  // date cutoff instead of walking all history.
+  q.set('sortOrder', opts.sortOrder ?? 'desc')
   return zernioFetchRaw<Paginated<ZernioInboxConversation>>(`/v1/inbox/conversations?${q.toString()}`)
 }
 
 // One page of messages for a conversation. accountId is required by Zernio.
-export function getInboxMessages(conversationId: string, accountId: string, opts?: { cursor?: string; limit?: number }) {
+// Defaults to newest-first so a date-bounded backfill can stop early.
+export function getInboxMessages(conversationId: string, accountId: string, opts?: { cursor?: string; limit?: number; sortOrder?: 'asc' | 'desc' }) {
   const q = new URLSearchParams({ accountId })
   if (opts?.cursor) q.set('cursor', opts.cursor)
   q.set('limit', String(opts?.limit ?? 100))
-  q.set('sortOrder', 'asc')
+  q.set('sortOrder', opts?.sortOrder ?? 'desc')
   return zernioFetchRaw<Paginated<ZernioInboxMessage>>(
     `/v1/inbox/conversations/${encodeURIComponent(conversationId)}/messages?${q.toString()}`
   )

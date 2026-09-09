@@ -29,9 +29,17 @@ export function SyncHistoryButton() {
     setBusy(true)
     try {
       const res = await fetch('/api/zernio/inbox/backfill?force=1', { method: 'POST' })
+      if (!res.ok) {
+        toast.error(`Could not sync history (${res.status}) — try again in a moment`)
+        return
+      }
       const d = (await res.json()) as { skipped?: boolean; reason?: string; conversations?: number; messages?: number }
       if (d.skipped) {
-        toast.error(d.reason === 'zernio_disabled' ? 'Messaging provider not connected' : 'Could not sync history')
+        toast.error(
+          d.reason === 'zernio_disabled'
+            ? 'Messaging provider not connected'
+            : `Could not sync history${d.reason ? `: ${d.reason}` : ''}`
+        )
         return
       }
       toast.success(`History synced — ${d.conversations ?? 0} conversations, ${d.messages ?? 0} messages`)
