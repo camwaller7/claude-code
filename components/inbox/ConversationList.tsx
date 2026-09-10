@@ -5,19 +5,7 @@ import { useState } from 'react'
 import { Star } from 'lucide-react'
 import type { Conversation, MessageCategory } from '@/types'
 import { relativeTime, cn } from '@/lib/utils'
-
-function platformLabel(platform: string): string {
-  const map: Record<string, string> = {
-    instagram: 'IG',
-    facebook: 'FB',
-    x: 'X',
-    threads: 'TH',
-    tiktok: 'TK',
-    gmail: 'GM',
-    telegram: 'TG',
-  }
-  return map[platform] ?? platform.toUpperCase()
-}
+import { ContactAvatar } from '@/components/inbox/ContactAvatar'
 
 const CATEGORY_OPTIONS: { value: MessageCategory; label: string }[] = [
   { value: 'uncategorized', label: 'Uncategorized' },
@@ -90,9 +78,12 @@ export function ConversationList({ conversations }: Props) {
           )}
         >
           <div className="flex items-center gap-3 min-w-0 flex-1">
-            <span className="inline-flex h-8 w-10 shrink-0 items-center justify-center rounded bg-muted text-xs font-bold">
-              {platformLabel(conv.platform)}
-            </span>
+            <ContactAvatar
+              avatar={conv.contact_avatar}
+              platform={conv.platform}
+              name={conv.contact_name}
+              size={40}
+            />
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <span className="font-medium truncate">{conv.contact_name}</span>

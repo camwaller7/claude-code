@@ -30,6 +30,7 @@ export interface Conversation {
   status: MessageStatus
   priority: number
   is_important: boolean
+  contact_avatar: string | null
   last_message_at: string
   created_at: string
 }

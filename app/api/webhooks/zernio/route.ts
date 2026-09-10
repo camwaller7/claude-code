@@ -24,7 +24,7 @@ interface ZernioMessageEvent {
     platformMessageId: string
     direction: 'incoming' | 'outgoing'
     text: string | null
-    sender?: { id: string; name?: string; username?: string }
+    sender?: { id: string; name?: string; username?: string; picture?: string }
     attachments?: { type?: string; originalType?: string; url?: string; payload?: unknown }[]
   }
   // The connected account that received/sent this event. account.id is the
@@ -227,6 +227,10 @@ export async function POST(request: NextRequest) {
     const sender = msg.sender
     const name = sender?.name || sender?.username || sender?.id || 'Unknown'
     const handle = sender?.username ? `@${sender.username}` : sender?.id ?? ''
+    const avatar = sender?.picture ?? null
+    // Only set the avatar column when we actually have one, so a later event
+    // without a picture doesn't wipe a good one.
+    const avatarPatch = avatar ? { contact_avatar: avatar } : {}
     // The participant's platform id — the identity shared with the REST inbox
     // API (participantId). Reconcile on it so a thread the history backfill
     // already created (keyed by the platform's numeric conversation id) is
@@ -254,6 +258,7 @@ export async function POST(request: NextRequest) {
             contact_handle: handle,
             status: 'needs_reply',
             last_message_at: now,
+            ...avatarPatch,
           })
           .eq('id', match.id as string)
         conv = { id: match.id as string }
@@ -274,6 +279,7 @@ export async function POST(request: NextRequest) {
             contact_handle: handle,
             status: 'needs_reply',
             last_message_at: now,
+            ...avatarPatch,
             ...owner,
           },
           { onConflict: conflictTarget.conversation() }

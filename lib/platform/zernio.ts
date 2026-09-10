@@ -171,6 +171,7 @@ export interface ZernioInboxConversation {
   accountUsername?: string
   participantId?: string
   participantName?: string
+  participantPicture?: string | null
   lastMessage?: string
   updatedTime?: string
   status?: 'active' | 'archived'

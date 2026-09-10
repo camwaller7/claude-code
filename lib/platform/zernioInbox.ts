@@ -83,6 +83,7 @@ async function upsertConversation(
     // Stamp the participant id on a row that predates it (webhook rows, or an
     // earlier backfill) so future syncs and webhooks reconcile to it.
     if (!existing.participant_id && participantId) patch.participant_id = participantId
+    if (c.participantPicture) patch.contact_avatar = c.participantPicture
     await adminSupabase.from('conversations').update(patch).eq('id', existing.id as string)
     return existing.id as string
   }
@@ -97,6 +98,7 @@ async function upsertConversation(
       // No username is exposed by the list endpoint; a later webhook fills the
       // real @handle in. Empty (not the opaque numeric id) keeps the UI clean.
       contact_handle: '',
+      contact_avatar: c.participantPicture ?? null,
       status: 'needs_reply',
       last_message_at: lastAt,
       ...(userId ? { user_id: userId } : {}),
