@@ -1,9 +1,17 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { FileText } from 'lucide-react'
+import { ImageOff } from 'lucide-react'
 import type { Message, MessageAttachment, Conversation } from '@/types'
 import { cn, formatTime } from '@/lib/utils'
+
+// The app to send the viewer to for content Meta only serves inside its own app.
+function appName(platform: string): string {
+  if (platform === 'instagram') return 'Instagram'
+  if (platform === 'facebook') return 'Facebook'
+  if (platform === 'threads') return 'Threads'
+  return 'the'
+}
 
 // Zernio-hosted media needs the API key, so route it through our authenticated
 // proxy; other (public) URLs load directly.
@@ -24,26 +32,44 @@ function normalizeType(type: string): 'image' | 'video' | 'audio' | 'share' | 'f
   return 'file'
 }
 
-function Attachment({ attachment }: { attachment: MessageAttachment }) {
-  const kind = normalizeType(attachment.type)
-  const src = mediaSrc(attachment.url)
-  if (kind === 'image') {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={src} alt="attachment" className="max-h-64 rounded-lg" />
-  }
-  if (kind === 'video') {
-    return <video src={src} controls className="max-h-64 rounded-lg" />
-  }
-  if (kind === 'audio') {
-    return <audio src={src} controls className="w-56" />
-  }
-  // share / file — link out with a small card.
+// Shown when we can't render the media itself — a shared post/story (Meta only
+// serves those inside its own app), or a photo/video whose link has expired.
+// Makes it clear it's a platform limitation, not the app being broken.
+function MediaPlaceholder({ label, platform }: { label: string; platform: string }) {
   return (
-    <a href={src} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm hover:bg-accent transition-colors">
-      <FileText className="h-4 w-4 text-muted-foreground" />
-      {kind === 'share' ? 'Shared post' : 'Attachment'}
-    </a>
+    <div className="flex max-w-[16rem] items-center gap-2.5 rounded-lg border border-dashed bg-muted/40 px-3 py-2.5 text-xs text-muted-foreground">
+      <ImageOff className="h-4 w-4 shrink-0" />
+      <span>{label} — only viewable in the {appName(platform)} app</span>
+    </div>
   )
+}
+
+function Attachment({ attachment, platform }: { attachment: MessageAttachment; platform: string }) {
+  const [failed, setFailed] = useState(false)
+  const kind = normalizeType(attachment.type)
+  const src = attachment.url ? mediaSrc(attachment.url) : ''
+
+  // Shared posts / stories / mentions are references to content on the platform
+  // that Meta does not serve to us — and any attachment without a media URL —
+  // always render as a friendly placeholder rather than a blank/broken tile.
+  if (kind === 'share' || !src) {
+    const label =
+      kind === 'share' ? 'Shared post or story'
+      : kind === 'video' ? 'Video'
+      : kind === 'image' ? 'Photo'
+      : 'Media'
+    return <MediaPlaceholder label={label} platform={platform} />
+  }
+
+  // eslint-disable-next-line @next/next/no-img-element
+  if (kind === 'image' && !failed) return <img src={src} alt="attachment" className="max-h-64 rounded-lg" referrerPolicy="no-referrer" onError={() => setFailed(true)} />
+  if (kind === 'video' && !failed) return <video src={src} controls className="max-h-64 rounded-lg" onError={() => setFailed(true)} />
+  if (kind === 'audio' && !failed) return <audio src={src} controls className="w-56" onError={() => setFailed(true)} />
+
+  // Reached only when the media failed to load (e.g. an expired CDN link) or a
+  // generic file we can't inline — show the placeholder so it never looks broken.
+  const label = kind === 'video' ? 'Video' : kind === 'image' ? 'Photo' : kind === 'audio' ? 'Voice message' : 'Attachment'
+  return <MediaPlaceholder label={label} platform={platform} />
 }
 
 interface Props {
@@ -51,7 +77,7 @@ interface Props {
   conversation: Conversation
 }
 
-function MessageBubble({ message }: { message: Message }) {
+function MessageBubble({ message, platform }: { message: Message; platform: string }) {
   const isOutbound = message.direction === 'outbound'
   const [showDraft, setShowDraft] = useState(false)
 
@@ -63,7 +89,7 @@ function MessageBubble({ message }: { message: Message }) {
       {attachments.length > 0 && (
         <div className={cn('flex max-w-[70%] flex-col gap-1.5', isOutbound ? 'items-end' : 'items-start')}>
           {attachments.map((a, i) => (
-            <Attachment key={i} attachment={a} />
+            <Attachment key={i} attachment={a} platform={platform} />
           ))}
         </div>
       )}
@@ -105,7 +131,7 @@ function MessageBubble({ message }: { message: Message }) {
   )
 }
 
-export function MessageThread({ messages }: Props) {
+export function MessageThread({ messages, conversation }: Props) {
   // Open the thread scrolled to the most recent message (chat convention),
   // rather than at the oldest one. Jump instantly on load; smooth-scroll when
   // new messages arrive in the same view.
@@ -152,7 +178,7 @@ export function MessageThread({ messages }: Props) {
                 <div className="h-px flex-1 bg-border" />
               </div>
             )}
-            <MessageBubble message={message} />
+            <MessageBubble message={message} platform={conversation.platform} />
           </div>
         )
       })}
