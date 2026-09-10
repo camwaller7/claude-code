@@ -44,11 +44,24 @@ export async function getMonthlyAICostUsd(userId?: string | null): Promise<numbe
   return cost
 }
 
-// The configured monthly cap in USD, or null when no cap is set (env unset or
-// non-positive) — in which case the budget is not enforced.
+// Approx AUD→USD rate for converting an AUD budget to the USD the API is billed
+// in. It's a rough safety cap, not precise billing, so a fixed default is fine;
+// override with AUD_USD_RATE if you want it tighter.
+const DEFAULT_AUD_USD = 0.66
+
+// The configured monthly cap expressed in USD (what the API is billed in), or
+// null when no cap is set — in which case the budget is not enforced.
+//
+// Set the cap in AUD via MONTHLY_AI_BUDGET_AUD (converted here), or directly in
+// USD via MONTHLY_AI_BUDGET_USD. AUD takes precedence when both are set.
 export function getMonthlyBudgetUsd(): number | null {
-  const v = Number(process.env.MONTHLY_AI_BUDGET_USD)
-  return Number.isFinite(v) && v > 0 ? v : null
+  const aud = Number(process.env.MONTHLY_AI_BUDGET_AUD)
+  if (Number.isFinite(aud) && aud > 0) {
+    const rate = Number(process.env.AUD_USD_RATE)
+    return aud * (Number.isFinite(rate) && rate > 0 ? rate : DEFAULT_AUD_USD)
+  }
+  const usd = Number(process.env.MONTHLY_AI_BUDGET_USD)
+  return Number.isFinite(usd) && usd > 0 ? usd : null
 }
 
 export interface BudgetStatus {
