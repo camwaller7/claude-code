@@ -17,7 +17,9 @@ function normPlatform(p?: string): string {
   return p === 'twitter' ? 'x' : (p ?? '')
 }
 
-export async function POST(request: NextRequest) {
+// GET so the owner can trigger it by visiting the URL in a browser (same pattern
+// as /api/zernio/setup-webhook). Owner-only, and idempotent, so this is safe.
+export async function GET(request: NextRequest) {
   const unauthorized = await requireApiAuth(request)
   if (unauthorized) return unauthorized
   if (!(await currentUserIsOwner())) {
